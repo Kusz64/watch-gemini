@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gemini Watch</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 28px 18px 56px;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 15px;
+      text-align: center;
+      color: #8ab4f8;
+      margin: 0 0 12px;
+    }
+    #chat { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .msg {
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .user { background: #1a3b5c; margin-left: 14px; }
+    .bot { background: #1c1c1e; margin-right: 6px; }
+    .err { background: #4a1515; color: #ffb4ab; }
+    input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid #333;
+      border-radius: 20px;
+      background: #161618;
+      color: #fff;
+      font-size: 15px;
+      margin-bottom: 8px;
+      outline: none;
+    }
+    .row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+    button {
+      border: none;
+      border-radius: 20px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .primary { background: #1a73e8; color: #fff; flex: 1; }
+    .secondary { background: #2c2c2e; color: #ddd; }
+    .hint { font-size: 12px; color: #aaa; text-align: center; margin: 8px 0; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Gemini Watch</h1>
+
+  <!-- Pantalla inicial para guardar la API Key -->
+  <div id="setupView" class="hidden">
+    <p class="hint">Pega tu API Key de Google AI Studio (se guarda solo en este dispositivo):</p>
+    <input id="keyInput" type="password" placeholder="AIza...">
+    <div class="row">
+      <button id="saveKeyBtn" class="primary">Guardar clave</button>
+    </div>
+  </div>
+
+  <!-- Pantalla de chat -->
+  <div id="chatView" class="hidden">
+    <div id="chat">
+      <div class="hint">Escribe abajo para preguntar a Gemini</div>
+    </div>
+    <input id="promptInput" type="text" placeholder="Escribe tu pregunta...">
+    <div class="row">
+      <button id="sendBtn" class="primary">Enviar</button>
+      <button id="clearBtn" class="secondary">Limpiar</button>
+    </div>
+    <div class="row" style="margin-top: 10px;">
+      <button id="syncBtn" class="secondary" style="font-size: 12px;">Pasar al reloj</button>
+      <button id="resetKeyBtn" class="secondary" style="font-size: 12px;">Clave</button>
+    </div>
+  </div>
+
+  <script>
+    const MODEL = "gemini-4-hydrogen";
+    const KEY_STORAGE = "gemini_watch_api_key";
+    let chatHistory = [];
+    let isLoading = false;
+
+    const setupView = document.getElementById("setupView");
+    const chatView = document.getElementById("chatView");
+    const chatEl = document.getElementById("chat");
+    const promptInput = document.getElementById("promptInput");
+    const sendBtn = document.getElementById("sendBtn");
+
+    // Si el link trae #key=..., la guarda automaticamente y limpia la barra
+    if (location.hash.startsWith("#key=")) {
+      const k = decodeURIComponent(location.hash.slice(5)).trim();
+      if (k) {
+        localStorage.setItem(KEY_STORAGE, k);
+        window.history.replaceState(null, "", location.pathname);
+      }
+    }
+
+    function updateView() {
+      const hasKey = !!localStorage.getItem(KEY_STORAGE);
+      setupView.classList.toggle("hidden", hasKey);
+      chatView.classList.toggle("hidden", !hasKey);
+    }
+
+    function addBubble(text, cls) {
+      const hint = chatEl.querySelector(".hint");
+      if (hint) hint.remove();
+      const div = document.createElement("div");
+      div.className = "msg " + cls;
+      div.textContent = text;
+      chatEl.appendChild(div);
+      window.scrollTo(0, document.body.scrollHeight);
+      return div;
+    }
+
+    async function sendPrompt() {
+      const text = promptInput.value.trim();
+      const apiKey = localStorage.getItem(KEY_STORAGE);
+      if (!text || !apiKey || isLoading) return;
+
+      isLoading = true;
+      sendBtn.disabled = true;
+      promptInput.value = "";
+
+      addBubble(text, "user");
+      const botBubble = addBubble("Pensando...", "bot");
+      chatHistory.push({ role: "user", parts: [{ text }] });
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            systemInstruction: {
+              parts: [{ text: "Responde en español, claro y breve porque te leo en un reloj inteligente. Sin asteriscos ni tablas." }]
+            },
+            contents: chatHistory,
+            generationConfig: {
+              thinkingConfig: { thinkingLevel: "low" }
+            }
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || ("Error HTTP " + res.status));
+
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        const reply = parts
+          .filter(p => !p.thought && p.text)
+          .map(p => p.text)
+          .join("\n")
+          .replace(/\*\*/g, "")
+          .trim() || "(Sin respuesta)";
+
+        chatHistory.push({ role: "model", parts: [{ text: reply }] });
+        botBubble.textContent = reply;
+      } catch (err) {
+        chatHistory.pop();
+        botBubble.className = "msg err";
+        botBubble.textContent = "Error: " + err.message;
+      } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+    }
+
+    document.getElementById("saveKeyBtn").onclick = () => {
+      const k = document.getElementById("keyInput").value.trim();
+      if (!k) return;
+      localStorage.setItem(KEY_STORAGE, k);
+      document.getElementById("keyInput").value = "";
+      updateView();
+    };
+
+    sendBtn.onclick = sendPrompt;
+    promptInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") sendPrompt();
+    });
+
+    document.getElementById("clearBtn").onclick = () => {
+      chatHistory = [];
+      chatEl.innerHTML = '<div class="hint">Chat limpio. Escribe tu pregunta</div>';
+    };
+
+    document.getElementById("syncBtn").onclick = () => {
+      const k = localStorage.getItem(KEY_STORAGE);
+      if (!k) return;
+      location.hash = "key=" + encodeURIComponent(k);
+      alert("Listo. Ahora guarda esta pagina en Marcadores (estrella) de Samsung Internet en tu celular, y luego abre ese marcador en tu reloj.");
+    };
+
+    document.getElementById("resetKeyBtn").onclick = () => {
+      if (confirm("¿Borrar la API Key guardada en este dispositivo?")) {
+        localStorage.removeItem(KEY_STORAGE);
+        updateView();
+      }
+    };
+
+    updateView();
+  </script>
+</body>
+</html>
