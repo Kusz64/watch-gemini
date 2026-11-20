@@ -1,51 +1,334 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="oled">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Gemini Watch</title>
   <style>
-    :root { --fs: 22px; }
-    * { box-sizing: border-box; }
-    body {
+    :root {
+      --fs: 21px;
+      --bright: 1;
+      --bg: #000000;
+      --card: #0c0e12;
+      --card-2: #151921;
+      --border: #232833;
+      --text: #ffffff;
+      --muted: #9aa3b2;
+      --q-color: #8ab4f8;
+      --accent: #1a73e8;
+      --accent-soft: #132544;
+      --accent-border: #3b82f6;
+      --accent-text: #ffffff;
+      --ok-bg: #0d3a2b;
+      --ok-border: #34a853;
+      --ok-text: #d7fbe8;
+      --err-bg: #481515;
+      --err-border: #ea4335;
+      --err-text: #ffd6d2;
+      --warn-bg: #42300b;
+      --warn-border: #fbbc04;
+      --warn-text: #fef0c7;
+      --pill-bg: #1a1e26;
+      --pill-text: #f1f5f9;
+      --label-sim: #7dd3fc;
+      --label-dif: #fdba74;
+      --label-gen: #93c5fd;
+    }
+
+    html[data-theme="graphite"] {
+      --bg: #0b0d11;
+      --card: #161a22;
+      --card-2: #202632;
+      --border: #303848;
+      --text: #f8fafc;
+      --muted: #9ca8bc;
+      --pill-bg: #222836;
+    }
+
+    html[data-theme="amber"] {
+      --bg: #000000;
+      --card: #0d0a06;
+      --card-2: #18120a;
+      --border: #332514;
+      --text: #f5cf93;
+      --muted: #b89158;
+      --q-color: #f6b95c;
+      --accent: #b86b14;
+      --accent-soft: #2b1a07;
+      --accent-border: #d9821e;
+      --accent-text: #fff3dd;
+      --ok-bg: #1e2a14;
+      --ok-border: #6ea847;
+      --ok-text: #e2f5cf;
+      --err-bg: #3b1610;
+      --err-border: #d9534f;
+      --err-text: #ffd6cc;
+      --warn-bg: #362408;
+      --warn-border: #e0a024;
+      --warn-text: #fde6b4;
+      --pill-bg: #1b140c;
+      --pill-text: #f5cf93;
+      --label-sim: #e8b86d;
+      --label-dif: #f2994a;
+      --label-gen: #f5cf93;
+    }
+
+    html[data-theme="light"] {
+      --bg: #f1f4f9;
+      --card: #ffffff;
+      --card-2: #e8eef7;
+      --border: #ccd6e4;
+      --text: #111827;
+      --muted: #556277;
+      --q-color: #1558b8;
+      --accent: #1a73e8;
+      --accent-soft: #dbeafe;
+      --accent-border: #2563eb;
+      --accent-text: #103a8c;
+      --ok-bg: #dcfce7;
+      --ok-border: #16a34a;
+      --ok-text: #14532d;
+      --err-bg: #fee2e2;
+      --err-border: #dc2626;
+      --err-text: #7f1d1d;
+      --warn-bg: #fef3c7;
+      --warn-border: #d97706;
+      --warn-text: #78350f;
+      --pill-bg: #e2e8f0;
+      --pill-text: #0f172a;
+      --label-sim: #0369a1;
+      --label-dif: #c2410c;
+      --label-gen: #1d4ed8;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
       margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Control real de brillo visual en pantalla OLED / Clara */
+    #dimOverlay {
+      position: fixed;
+      inset: 0;
       background: #000;
-      color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-      padding: 32px 11% 90px;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: calc(1 - var(--bright));
+      transition: opacity 0.2s ease;
+    }
+
+    .shell {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 10% 96px;
       min-height: 100vh;
     }
-    .entry {
-      padding: 14px 0;
-      border-bottom: 1px solid #222;
-      scroll-margin-top: 26px;
+
+    @media (min-width: 600px) {
+      .shell {
+        padding: 26px 28px 96px;
+      }
     }
-    .q {
-      font-size: calc(var(--fs) - 3px);
+
+    /* Barra superior minimalista */
+    .top-status-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .top-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
       font-weight: 700;
-      color: #8ab4f8;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 5px 12px;
+      cursor: pointer;
+      max-width: 100%;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .dot.ok { background: #22c55e; }
+    .dot.warn { background: #f59e0b; }
+
+    /* Carrusel de tarjetas */
+    #deckSection {
+      margin-bottom: 12px;
+      scroll-margin-top: 16px;
+    }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .nav-btn {
+      width: 38px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 16px;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .nav-btn:disabled { opacity: 0.3; }
+
+    .counter-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 999px;
+    }
+
+    .index-drawer {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .index-item {
+      width: 100%;
+      text-align: left;
+      background: var(--card-2);
+      border: 1px solid transparent;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 9px 11px;
+      font-size: 13.5px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .index-item.active {
+      border-color: var(--accent-border);
+      background: var(--accent-soft);
+      color: var(--accent-text);
+    }
+    .index-sub {
+      display: block;
+      font-size: 11.5px;
+      color: var(--muted);
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Tarjeta activa One UI Watch */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 14px 13px;
+      touch-action: pan-y;
+      position: relative;
+      overflow: hidden;
+    }
+
+    @keyframes slideLeft {
+      from { opacity: 0.35; transform: translateX(26px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideRight {
+      from { opacity: 0.35; transform: translateX(-26px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .anim-left { animation: slideLeft 0.18s ease-out; }
+    .anim-right { animation: slideRight 0.18s ease-out; }
+
+    .card-top {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .tag {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--muted);
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 9px;
+    }
+
+    .view-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 5px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 999px;
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .tab-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent-border);
+      color: var(--accent-text);
+    }
+
+    .q {
+      font-size: calc(var(--fs) - 4px);
+      font-weight: 700;
+      color: var(--q-color);
       margin-bottom: 10px;
       line-height: 1.25;
       text-align: center;
       word-wrap: break-word;
     }
-    .tag-wrap { text-align: center; }
-    .tag {
-      display: inline-block;
-      font-size: 12px;
-      font-weight: 700;
-      color: #9aa0a6;
-      background: #17181b;
-      border: 1px solid #2b2d33;
-      border-radius: 999px;
-      padding: 2px 9px;
-      margin-bottom: 8px;
-    }
+
     .verdict {
-      background: #0f3d2e;
-      border: 1px solid #34a853;
-      color: #d7fbe8;
-      border-radius: 14px;
+      background: var(--ok-bg);
+      border: 1px solid var(--ok-border);
+      color: var(--ok-text);
+      border-radius: 15px;
       padding: 9px 12px;
       margin-bottom: 10px;
       font-size: calc(var(--fs) - 1px);
@@ -55,68 +338,146 @@
       word-wrap: break-word;
     }
     .verdict.false {
-      background: #4a1515;
-      border-color: #ea4335;
-      color: #ffd6d2;
+      background: var(--err-bg);
+      border-color: var(--err-border);
+      color: var(--err-text);
     }
     .verdict.warn {
-      background: #42300b;
-      border-color: #fbbc04;
-      color: #fef0c7;
+      background: var(--warn-bg);
+      border-color: var(--warn-border);
+      color: var(--warn-text);
     }
-    .a {
+
+    .answer-body {
       font-size: var(--fs);
       font-weight: 500;
-      color: #fff;
-      line-height: 1.35;
-      white-space: pre-wrap;
+      color: var(--text);
+      line-height: 1.38;
       word-wrap: break-word;
     }
+
+    .ans-line {
+      margin: 0 0 7px;
+    }
+    .ans-line:last-child { margin-bottom: 0; }
+
+    .badge-v, .badge-f {
+      display: inline-block;
+      font-size: 0.82em;
+      font-weight: 800;
+      padding: 1px 7px;
+      border-radius: 8px;
+      margin-right: 5px;
+      vertical-align: baseline;
+    }
+    .badge-v {
+      background: var(--ok-bg);
+      border: 1px solid var(--ok-border);
+      color: var(--ok-text);
+    }
+    .badge-f {
+      background: var(--err-bg);
+      border: 1px solid var(--err-border);
+      color: var(--err-text);
+    }
+
+    .sec-lbl {
+      font-weight: 800;
+      color: var(--label-gen);
+      margin-right: 4px;
+    }
+    .sec-lbl.sim { color: var(--label-sim); }
+    .sec-lbl.dif { color: var(--label-dif); }
+
+    /* Barra de pulso estilo Gemini al cargar */
+    .pulse-wrap {
+      padding: 10px 4px;
+      text-align: center;
+    }
+    .pulse-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--card-2), var(--accent), #34a853, var(--card-2));
+      background-size: 220% 100%;
+      animation: shimmer 1.2s linear infinite;
+      margin-bottom: 8px;
+    }
+    @keyframes shimmer {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    .pulse-txt {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
     .src {
       margin-top: 10px;
-      font-size: 14px;
-      color: #81c995;
-      line-height: 1.3;
-    }
-    .entry-actions {
-      display: flex;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-    .mini-btn {
-      background: #1c1f26;
-      border: 1px solid #333a47;
-      color: #c6dafc;
-      padding: 7px 12px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
       font-size: 13px;
-      border-radius: 999px;
-      font-weight: 700;
-    }
-    .mini-btn:disabled { opacity: 0.45; }
-    .err { color: #ff8a80; }
-    .hint {
-      font-size: 18px;
-      color: #aaa;
-      text-align: center;
-      margin: 12px 0 16px;
+      color: var(--ok-border);
       line-height: 1.3;
+      word-wrap: break-word;
     }
+
+    .err { color: var(--err-border); font-weight: 600; }
+
+    /* Rieles horizontales deslizables (sin scrollbar, seguros para Wear OS) */
+    .h-rail {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scroll-snap-type: x proximity;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 4px 4px 6px;
+      margin: 6px 0 0;
+    }
+    .h-rail::-webkit-scrollbar { display: none; }
+
+    @media (min-width: 600px) {
+      .h-rail {
+        flex-wrap: wrap;
+        justify-content: center;
+        overflow-x: visible;
+      }
+    }
+
+    .rail-item {
+      flex: 0 0 auto;
+      scroll-snap-align: center;
+    }
+
+    /* Botones e inputs */
+    .hint {
+      font-size: 16.5px;
+      color: var(--muted);
+      text-align: center;
+      margin: 10px 0 12px;
+      line-height: 1.35;
+      background: var(--card);
+      border: 1px dashed var(--border);
+      border-radius: 20px;
+      padding: 14px 12px;
+    }
+
     textarea, input[type="text"], input[type="password"] {
       width: 100%;
-      padding: 13px;
-      border: 2px solid #444;
+      padding: 12px 13px;
+      border: 2px solid var(--border);
       border-radius: 18px;
-      background: #141416;
-      color: #fff;
-      font-size: 19px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 18px;
       font-family: inherit;
       line-height: 1.3;
-      margin: 10px 0;
+      margin: 8px 0;
       outline: none;
     }
-    textarea:focus, input:focus { border-color: #1a73e8; }
+    textarea:focus, input:focus { border-color: var(--accent); }
+
     button {
       border: none;
       border-radius: 24px;
@@ -124,63 +485,110 @@
       cursor: pointer;
       font-family: inherit;
     }
+    button:active { transform: scale(0.97); }
+
     .big-btn {
       width: 100%;
-      padding: 16px;
-      font-size: 20px;
-      background: #1a73e8;
+      padding: 15px;
+      font-size: 19px;
+      background: var(--accent);
       color: #fff;
-      margin-bottom: 12px;
+      margin: 4px 0 8px;
     }
-    .big-btn:disabled { background: #333; color: #888; }
-    .row {
-      display: flex;
-      gap: 8px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-top: 8px;
-    }
+    .big-btn:disabled { opacity: 0.45; }
+
     .pill {
-      padding: 11px 15px;
-      font-size: 16px;
-      background: #222;
-      color: #eee;
+      padding: 10px 14px;
+      font-size: 15px;
+      background: var(--pill-bg);
+      color: var(--pill-text);
+      border: 1px solid var(--border);
+      white-space: nowrap;
     }
     .pill.on {
-      background: #134e3a;
-      color: #b7f7d8;
-      border: 1px solid #34a853;
+      background: var(--ok-bg);
+      color: var(--ok-text);
+      border-color: var(--ok-border);
     }
     .pill.accent {
-      background: #1a2d4d;
-      color: #c2dbff;
-      border: 1px solid #4285f4;
+      background: var(--accent-soft);
+      color: var(--accent-text);
+      border-color: var(--accent-border);
     }
+
+    .mini-btn {
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 12px;
+      font-size: 13px;
+      border-radius: 999px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .mini-btn:disabled { opacity: 0.45; }
+
+    /* Micro-paneles desplegables */
+    .drawer {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 10px;
+      margin-top: 8px;
+    }
+    .drawer-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin: 2px 0 6px;
+    }
+
+    .row {
+      display: flex;
+      gap: 7px;
+      justify-content: center;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 6px;
+    }
+
+    .font-readout {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--muted);
+      min-width: 44px;
+      text-align: center;
+    }
+
+    /* Opciones y Fuentes */
     details {
-      margin-top: 22px;
-      color: #ccc;
+      margin-top: 18px;
+      color: var(--muted);
       font-size: 15px;
-      border-top: 1px solid #222;
-      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
     }
     summary {
       padding: 10px;
       cursor: pointer;
       text-align: center;
       font-weight: 700;
-      color: #aaa;
+      color: var(--muted);
     }
     .panel {
-      background: #111;
-      border: 1px solid #2a2a2a;
-      border-radius: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
       padding: 12px;
       margin-top: 10px;
     }
     .panel h3 {
       margin: 0 0 8px;
-      font-size: 16px;
-      color: #8ab4f8;
+      font-size: 15.5px;
+      color: var(--q-color);
     }
     .doc-item {
       display: flex;
@@ -188,172 +596,299 @@
       align-items: center;
       gap: 8px;
       padding: 8px 0;
-      border-bottom: 1px solid #222;
+      border-bottom: 1px solid var(--border);
       font-size: 14px;
+      color: var(--text);
       word-break: break-word;
     }
     .del-btn {
-      background: #5c1919;
-      color: #ffb4ab;
+      background: var(--err-bg);
+      border: 1px solid var(--err-border);
+      color: var(--err-text);
       padding: 6px 10px;
-      font-size: 13px;
+      font-size: 12.5px;
       flex-shrink: 0;
     }
     .status {
-      font-size: 14px;
-      color: #8ab4f8;
+      font-size: 13.5px;
+      color: var(--q-color);
       margin: 8px 0;
       text-align: center;
     }
     .small-note {
       font-size: 12px;
-      color: #9aa0a6;
+      color: var(--muted);
       margin: 4px 0 6px;
-      line-height: 1.35;
+      line-height: 1.4;
     }
-    .hidden { display: none; }
+
+    /* Botón flotante inteligente centrado abajo (lejos del borde izquierdo de Wear OS) */
+    #fabBtn {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 15px;
+      border-radius: 999px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+      display: none;
+    }
+    #fabBtn.show { display: inline-flex; align-items: center; gap: 5px; }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
+  <div id="dimOverlay"></div>
 
-  <!-- Pantalla de API Key -->
-  <div id="setupView" class="hidden">
-    <div class="hint">Pega tu API Key de Google AI Studio</div>
-    <input id="keyInput" type="password" placeholder="AIza...">
-    <button id="saveKeyBtn" class="big-btn">Guardar clave</button>
+  <div class="shell">
+    <!-- Pantalla de API Key -->
+    <div id="setupView" class="hidden">
+      <div class="hint">Pega tu API Key de Google AI Studio</div>
+      <input id="keyInput" type="password" placeholder="AIza...">
+      <button id="saveKeyBtn" class="big-btn">Guardar clave</button>
+    </div>
+
+    <!-- Pantalla principal -->
+    <div id="chatView" class="hidden">
+      <!-- Estado superior minimalista -->
+      <div class="top-status-wrap">
+        <button id="topStatusBtn" class="top-status" type="button">
+          <span id="statusDot" class="dot warn"></span>
+          <span id="topStatusText">Cargando...</span>
+        </button>
+      </div>
+
+      <!-- Carrusel de respuestas (1 tarjeta activa a la vez) -->
+      <section id="deckSection">
+        <div id="emptyHint" class="hint">
+          Toca abajo para preguntar.<br>
+          Detecta: Alt, 1-2-3, V/F, Def, Comp, Casos y Des.
+        </div>
+
+        <div id="pagerBar" class="pager hidden">
+          <button id="prevCardBtn" class="nav-btn" type="button" aria-label="Anterior">◀</button>
+          <button id="counterBtn" class="counter-btn" type="button">1 / 1 ▾</button>
+          <button id="nextCardBtn" class="nav-btn" type="button" aria-label="Siguiente">▶</button>
+        </div>
+
+        <div id="indexDrawer" class="index-drawer hidden"></div>
+
+        <div id="activeCard" class="card hidden"></div>
+      </section>
+
+      <!-- Entrada de pregunta -->
+      <section id="composerSection">
+        <textarea
+          id="promptInput"
+          rows="3"
+          placeholder="Pregunta, 1-2-3, V/F, def, comp..."
+          autocorrect="on"
+          autocapitalize="sentences"
+          spellcheck="true"
+        ></textarea>
+
+        <button id="sendBtn" class="big-btn" type="button">Enviar</button>
+
+        <!-- Riel horizontal #1: Controles diarios -->
+        <div id="mainRail" class="h-rail" aria-label="Controles rápidos">
+          <button id="sourcesBtn" class="pill rail-item" type="button">📚 Fuentes (0)</button>
+          <button id="modeBtn" class="pill rail-item" type="button">⚡ Rápido</button>
+          <button id="formatBtn" class="pill accent rail-item" type="button">🎯 Auto</button>
+          <button id="displayBtn" class="pill rail-item" type="button">🎨 Pantalla</button>
+          <button id="clearBtn" class="pill rail-item" type="button">🗑 Limpiar</button>
+        </div>
+
+        <!-- Micro-cinta de Formatos (1 toque, se cierra sola) -->
+        <div id="formatDrawer" class="drawer hidden">
+          <div class="drawer-title">Tipo de respuesta</div>
+          <div id="formatRail" class="h-rail"></div>
+        </div>
+
+        <!-- Micro-panel Pantalla (Temas, Brillo, Letra, Wake Lock, Vibración) -->
+        <div id="displayDrawer" class="drawer hidden">
+          <div class="drawer-title">Tema</div>
+          <div id="themeRail" class="h-rail"></div>
+
+          <div class="drawer-title" style="margin-top:8px;">Brillo visual</div>
+          <div id="brightRow" class="row"></div>
+
+          <div class="drawer-title" style="margin-top:8px;">Texto y reloj</div>
+          <div class="row">
+            <button id="fontDown" class="pill" type="button">A-</button>
+            <span id="fontReadout" class="font-readout">21px</span>
+            <button id="fontUp" class="pill" type="button">A+</button>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <button id="wakeBtn" class="pill" type="button" style="font-size:13.5px;">🔆 Pantalla fija: OFF</button>
+            <button id="vibBtn" class="pill on" type="button" style="font-size:13.5px;">📳 Vibrar: ON</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Opciones y Fuentes -->
+      <details id="optionsPanel">
+        <summary>⚙ Opciones y Fuentes</summary>
+
+        <div class="panel">
+          <h3>⚡ Atajos de formato</h3>
+          <div class="small-note">
+            En <strong>🎯 Auto</strong> detecta solo, o antepone un prefijo:<br>
+            <strong>alt</strong> (alternativas / 1-2-3-4) · <strong>vf</strong> (verdadero/falso)<br>
+            <strong>def</strong> (definición) · <strong>comp</strong> / <strong>dif</strong> / <strong>sim</strong> (comparar)<br>
+            <strong>caso</strong> (caso/conflicto) · <strong>des</strong> (desarrollo)<br>
+            Desliza horizontalmente en el centro de la tarjeta o usa ◀ ▶ para cambiar entre respuestas.
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>📚 Subir archivo (PC / Celular)</h3>
+          <div class="small-note">Recomendado: .md, .txt, .pdf o .docx limpios (máx. 100 MB). Audios (.m4a/.mp3) se transcriben primero en AI Studio.</div>
+          <input
+            id="fileInput"
+            type="file"
+            multiple
+            accept=".md,.txt,.pdf,.doc,.docx,.ppt,.pptx,.xlsx,.odt,.odp,.rtf,.csv,.json,.xml,.html"
+            style="width:100%;color:var(--muted);margin:6px 0;"
+          >
+          <button id="uploadFileBtn" class="big-btn" type="button" style="padding:12px;font-size:16px;margin:8px 0 0;">Subir archivo(s)</button>
+        </div>
+
+        <div class="panel">
+          <h3>📝 Pegar texto / transcripción</h3>
+          <input id="noteTitle" type="text" placeholder="Nombre (ej: clase1.md)" style="font-size:15px;padding:10px;">
+          <textarea id="noteBody" rows="4" placeholder="Pega aquí apuntes, chat o transcripción de audio..." style="font-size:15px;padding:10px;"></textarea>
+          <button id="uploadTextBtn" class="big-btn" type="button" style="padding:12px;font-size:16px;margin:4px 0 0;">Guardar texto como fuente</button>
+        </div>
+
+        <div class="panel">
+          <h3>📂 Fuentes guardadas</h3>
+          <div id="sourceStatus" class="status">Cargando...</div>
+          <div id="docList"></div>
+          <div class="row">
+            <button id="refreshDocsBtn" class="pill" type="button" style="font-size:14px;">Actualizar lista</button>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:14px;">
+          <button id="syncBtn" class="pill" type="button">Pasar al reloj</button>
+          <button id="resetKeyBtn" class="pill" type="button">Cambiar clave</button>
+        </div>
+      </details>
+    </div>
   </div>
 
-  <!-- Pantalla principal -->
-  <div id="chatView" class="hidden">
-    <div id="chat">
-      <div class="hint">Toca abajo para escribir tu pregunta.<br>Detecta solas: Alt, 1-2-3, V/F, Casos y Desarrollo.</div>
-    </div>
-
-    <textarea
-      id="promptInput"
-      rows="3"
-      placeholder="Toca aquí para escribir..."
-      autocorrect="on"
-      autocapitalize="sentences"
-      spellcheck="true"
-    ></textarea>
-
-    <button id="sendBtn" class="big-btn">Enviar</button>
-
-    <div class="row">
-      <button id="sourcesBtn" class="pill">📚 Fuentes: OFF</button>
-      <button id="modeBtn" class="pill">⚡ Rápido</button>
-    </div>
-
-    <div class="row">
-      <button id="formatBtn" class="pill accent">🎯 Auto</button>
-      <button id="clearBtn" class="pill">Limpiar</button>
-    </div>
-
-    <div class="row">
-      <button id="fontDown" class="pill">A-</button>
-      <button id="fontUp" class="pill">A+</button>
-    </div>
-
-    <details id="optionsPanel">
-      <summary>⚙ Opciones y Fuentes</summary>
-
-      <div class="panel">
-        <h3>⚡ Atajos de formato</h3>
-        <div class="small-note">
-          En <strong>🎯 Auto</strong> detecta solo el tipo de pregunta, o antepone:<br>
-          <strong>alt</strong> (alternativas / 1-2-3-4) · <strong>vf</strong> (verdadero/falso)<br>
-          <strong>caso</strong> (resolución de caso) · <strong>des</strong> (desarrollo)
-        </div>
-      </div>
-
-      <div class="panel">
-        <h3>📚 Subir archivo (PC / Celular)</h3>
-        <div class="small-note">Recomendado: .md, .txt, .pdf o .docx limpios (máx. 100 MB). Audios (.m4a/.mp3) se transcriben primero en AI Studio.</div>
-        <input
-          id="fileInput"
-          type="file"
-          multiple
-          accept=".md,.txt,.pdf,.doc,.docx,.ppt,.pptx,.xlsx,.odt,.odp,.rtf,.csv,.json,.xml,.html"
-          style="width:100%;color:#ccc;margin:6px 0;"
-        >
-        <button id="uploadFileBtn" class="big-btn" style="padding:12px;font-size:16px;margin:8px 0 0;">Subir archivo(s)</button>
-      </div>
-
-      <div class="panel">
-        <h3>📝 Pegar texto / transcripción</h3>
-        <input id="noteTitle" type="text" placeholder="Nombre (ej: clase1.md)" style="font-size:15px;padding:10px;">
-        <textarea id="noteBody" rows="4" placeholder="Pega aquí apuntes, chat o transcripción de audio..." style="font-size:15px;padding:10px;"></textarea>
-        <button id="uploadTextBtn" class="big-btn" style="padding:12px;font-size:16px;margin:4px 0 0;">Guardar texto como fuente</button>
-      </div>
-
-      <div class="panel">
-        <h3>📂 Fuentes guardadas</h3>
-        <div id="sourceStatus" class="status">Cargando...</div>
-        <div id="docList"></div>
-        <div class="row">
-          <button id="refreshDocsBtn" class="pill" style="font-size:14px;">Actualizar lista</button>
-        </div>
-      </div>
-
-      <div class="row" style="margin-top:14px;">
-        <button id="syncBtn" class="pill">Pasar al reloj</button>
-        <button id="resetKeyBtn" class="pill">Cambiar clave</button>
-      </div>
-    </details>
-  </div>
+  <!-- Botón flotante de salto rápido -->
+  <button id="fabBtn" type="button">↓ Preguntar</button>
 
   <script>
     const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
     const UPLOAD_BASE = "https://generativelanguage.googleapis.com/upload/v1beta";
     const STORE_DISPLAY = "WatchGeminiSources";
 
-    const KEY_STORAGE = "gemini_watch_api_key";
-    const SIZE_STORAGE = "gemini_watch_font_size";
-    const MODE_STORAGE = "gemini_watch_mode";
-    const RAG_STORAGE = "gemini_watch_use_sources";
+    // Claves de almacenamiento compatibles con tu versión anterior
+    const KEY_STORAGE    = "gemini_watch_api_key";
+    const SIZE_STORAGE   = "gemini_watch_font_size";
+    const MODE_STORAGE   = "gemini_watch_mode";
+    const RAG_STORAGE    = "gemini_watch_use_sources";
     const FORMAT_STORAGE = "gemini_watch_format";
+    const THEME_STORAGE  = "gemini_watch_theme";
+    const BRIGHT_STORAGE = "gemini_watch_bright";
+    const WAKE_STORAGE   = "gemini_watch_wakelock";
+    const VIB_STORAGE    = "gemini_watch_vibrate";
 
     const FORMATS = [
-      { id: "auto",       label: "🎯 Auto" },
-      { id: "alt",        label: "🅰 Alt / 1-2-3" },
-      { id: "vf",         label: "✅ V / F" },
-      { id: "desarrollo", label: "📝 Desarrollo" },
-      { id: "caso",       label: "⚖ Caso" }
+      { id: "auto",       label: "🎯 Auto",        short: "🎯" },
+      { id: "alt",        label: "🅰 Alt / 1-2-3", short: "🅰" },
+      { id: "vf",         label: "✅ V / F",       short: "✅" },
+      { id: "def",        label: "📖 Definición",  short: "📖" },
+      { id: "comp",       label: "🆚 Comparar",    short: "🆚" },
+      { id: "desarrollo", label: "📝 Desarrollo",  short: "📝" },
+      { id: "caso",       label: "⚖ Caso",         short: "⚖" }
     ];
+
+    const THEMES = [
+      { id: "oled",     label: "⬛ OLED" },
+      { id: "graphite", label: "🪨 Grafito" },
+      { id: "amber",    label: "🌙 Ámbar" },
+      { id: "light",    label: "☀ Claro" }
+    ];
+
+    const BRIGHT_STEPS = [100, 70, 45, 25];
 
     const TYPE_BADGES = {
       combo:      "🔢 Combinadas",
       alt:        "🅰 Alternativas",
       vf:         "✅ V / F",
+      def:        "📖 Definición",
+      comp:       "🆚 Comparativa",
       desarrollo: "📝 Desarrollo",
       caso:       "⚖ Caso",
       general:    "💬 Directa"
     };
 
     let chatHistory = [];
+    let cards = [];
+    let currentCardIdx = -1;
+    let indexOpen = false;
     let isLoading = false;
     let isUploading = false;
-    let fontSize = parseInt(localStorage.getItem(SIZE_STORAGE) || "22", 10);
-    let mode = localStorage.getItem(MODE_STORAGE) || "fast";
+    let wakeLockSentinel = null;
+
+    let fontSize   = parseInt(localStorage.getItem(SIZE_STORAGE) || "21", 10);
+    let mode       = localStorage.getItem(MODE_STORAGE) || "fast";
     let useSources = localStorage.getItem(RAG_STORAGE) === "1";
     let formatMode = localStorage.getItem(FORMAT_STORAGE) || "auto";
+    let themeMode  = localStorage.getItem(THEME_STORAGE) || "oled";
+    let brightPct  = parseInt(localStorage.getItem(BRIGHT_STORAGE) || "100", 10);
+    let wakeOn     = localStorage.getItem(WAKE_STORAGE) === "1";
+    let vibrateOn  = localStorage.getItem(VIB_STORAGE) !== "0";
+
     let activeStoreName = null;
     let activeDocs = [];
 
-    const setupView = document.getElementById("setupView");
-    const chatView = document.getElementById("chatView");
-    const chatEl = document.getElementById("chat");
-    const promptInput = document.getElementById("promptInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const modeBtn = document.getElementById("modeBtn");
-    const formatBtn = document.getElementById("formatBtn");
-    const sourcesBtn = document.getElementById("sourcesBtn");
-    const sourceStatus = document.getElementById("sourceStatus");
-    const docList = document.getElementById("docList");
-    const uploadFileBtn = document.getElementById("uploadFileBtn");
-    const uploadTextBtn = document.getElementById("uploadTextBtn");
+    // DOM
+    const setupView      = document.getElementById("setupView");
+    const chatView       = document.getElementById("chatView");
+    const topStatusBtn   = document.getElementById("topStatusBtn");
+    const statusDot      = document.getElementById("statusDot");
+    const topStatusText  = document.getElementById("topStatusText");
+    const deckSection    = document.getElementById("deckSection");
+    const emptyHint      = document.getElementById("emptyHint");
+    const pagerBar       = document.getElementById("pagerBar");
+    const prevCardBtn    = document.getElementById("prevCardBtn");
+    const nextCardBtn    = document.getElementById("nextCardBtn");
+    const counterBtn     = document.getElementById("counterBtn");
+    const indexDrawer    = document.getElementById("indexDrawer");
+    const activeCardEl   = document.getElementById("activeCard");
+    const composerSec    = document.getElementById("composerSection");
+    const promptInput    = document.getElementById("promptInput");
+    const sendBtn        = document.getElementById("sendBtn");
+    const sourcesBtn     = document.getElementById("sourcesBtn");
+    const modeBtn        = document.getElementById("modeBtn");
+    const formatBtn      = document.getElementById("formatBtn");
+    const displayBtn     = document.getElementById("displayBtn");
+    const clearBtn       = document.getElementById("clearBtn");
+    const formatDrawer   = document.getElementById("formatDrawer");
+    const formatRail     = document.getElementById("formatRail");
+    const displayDrawer  = document.getElementById("displayDrawer");
+    const themeRail      = document.getElementById("themeRail");
+    const brightRow      = document.getElementById("brightRow");
+    const fontReadout    = document.getElementById("fontReadout");
+    const wakeBtn        = document.getElementById("wakeBtn");
+    const vibBtn         = document.getElementById("vibBtn");
+    const sourceStatus   = document.getElementById("sourceStatus");
+    const docList        = document.getElementById("docList");
+    const uploadFileBtn  = document.getElementById("uploadFileBtn");
+    const uploadTextBtn  = document.getElementById("uploadTextBtn");
+    const fabBtn         = document.getElementById("fabBtn");
 
+    // Importación rápida por #key=
     if (location.hash.startsWith("#key=")) {
       const k = decodeURIComponent(location.hash.slice(5)).trim();
       if (k) {
@@ -364,15 +899,69 @@
 
     function getKey() { return localStorage.getItem(KEY_STORAGE) || ""; }
 
+    function buzz(ms = 26) {
+      if (!vibrateOn) return;
+      try {
+        if (typeof navigator.vibrate === "function") navigator.vibrate(ms);
+      } catch {}
+    }
+
+    // --- PANTALLA, TEMAS, BRILLO, WAKE LOCK ---
     function applyFont() {
-      fontSize = Math.max(16, Math.min(32, fontSize));
+      fontSize = Math.max(15, Math.min(30, fontSize));
       document.documentElement.style.setProperty("--fs", fontSize + "px");
+      fontReadout.textContent = fontSize + "px";
       localStorage.setItem(SIZE_STORAGE, String(fontSize));
+    }
+
+    function applyTheme() {
+      if (!THEMES.some(t => t.id === themeMode)) themeMode = "oled";
+      document.documentElement.setAttribute("data-theme", themeMode);
+      localStorage.setItem(THEME_STORAGE, themeMode);
+      renderThemeRail();
+    }
+
+    function applyBrightness() {
+      if (!BRIGHT_STEPS.includes(brightPct)) brightPct = 100;
+      document.documentElement.style.setProperty("--bright", String(brightPct / 100));
+      localStorage.setItem(BRIGHT_STORAGE, String(brightPct));
+      renderBrightRow();
+    }
+
+    async function syncWakeLock() {
+      wakeBtn.textContent = wakeOn ? "🔆 Pantalla fija: ON" : "🔆 Pantalla fija: OFF";
+      wakeBtn.classList.toggle("on", wakeOn);
+      localStorage.setItem(WAKE_STORAGE, wakeOn ? "1" : "0");
+
+      if (!("wakeLock" in navigator)) {
+        if (wakeOn) wakeBtn.textContent = "🔆 No soportado";
+        return;
+      }
+      try {
+        if (wakeOn && !wakeLockSentinel && document.visibilityState === "visible") {
+          wakeLockSentinel = await navigator.wakeLock.request("screen");
+          wakeLockSentinel.addEventListener("release", () => { wakeLockSentinel = null; });
+        } else if (!wakeOn && wakeLockSentinel) {
+          await wakeLockSentinel.release();
+          wakeLockSentinel = null;
+        }
+      } catch {}
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && wakeOn) syncWakeLock();
+    });
+
+    function applyVibrate() {
+      vibBtn.textContent = vibrateOn ? "📳 Vibrar: ON" : "📳 Vibrar: OFF";
+      vibBtn.classList.toggle("on", vibrateOn);
+      localStorage.setItem(VIB_STORAGE, vibrateOn ? "1" : "0");
     }
 
     function applyMode() {
       modeBtn.textContent = mode === "fast" ? "⚡ Rápido" : "🧠 Pro";
       localStorage.setItem(MODE_STORAGE, mode);
+      updateTopStatus();
     }
 
     function applyFormat() {
@@ -380,10 +969,16 @@
       formatMode = f.id;
       formatBtn.textContent = f.label;
       localStorage.setItem(FORMAT_STORAGE, formatMode);
+      renderFormatRail();
+      updateTopStatus();
+    }
+
+    function getActiveDocCount() {
+      return activeDocs.filter(d => !d.state || d.state === "STATE_ACTIVE").length;
     }
 
     function updateSourcesBtn() {
-      const count = activeDocs.filter(d => !d.state || d.state === "STATE_ACTIVE").length;
+      const count = getActiveDocCount();
       const active = useSources && count > 0;
       sourcesBtn.classList.toggle("on", active);
       if (count === 0) {
@@ -392,6 +987,77 @@
         sourcesBtn.textContent = active ? `📚 Fuentes: ON (${count})` : `📚 Fuentes: OFF (${count})`;
       }
       localStorage.setItem(RAG_STORAGE, useSources ? "1" : "0");
+      updateTopStatus();
+    }
+
+    function updateTopStatus() {
+      const count = getActiveDocCount();
+      const active = useSources && count > 0;
+      const fmt = FORMATS.find(x => x.id === formatMode) || FORMATS[0];
+      const modIcon = mode === "fast" ? "⚡" : "🧠";
+
+      statusDot.classList.remove("ok", "warn");
+      if (active) {
+        statusDot.classList.add("ok");
+        topStatusText.textContent = `${count} ${count === 1 ? "fuente" : "fuentes"} · ${modIcon} · ${fmt.short}`;
+      } else if (count > 0) {
+        topStatusText.textContent = `Libre (${count} off) · ${modIcon} · ${fmt.short}`;
+      } else {
+        statusDot.classList.add("warn");
+        topStatusText.textContent = `Sin fuentes · ${modIcon} · ${fmt.short}`;
+      }
+    }
+
+    function renderFormatRail() {
+      formatRail.innerHTML = "";
+      FORMATS.forEach(f => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "pill rail-item" + (f.id === formatMode ? " accent" : "");
+        b.style.fontSize = "14px";
+        b.style.padding = "8px 12px";
+        b.textContent = f.label;
+        b.onclick = () => {
+          formatMode = f.id;
+          applyFormat();
+          formatDrawer.classList.add("hidden");
+        };
+        formatRail.appendChild(b);
+      });
+    }
+
+    function renderThemeRail() {
+      themeRail.innerHTML = "";
+      THEMES.forEach(t => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "pill rail-item" + (t.id === themeMode ? " accent" : "");
+        b.style.fontSize = "14px";
+        b.style.padding = "8px 12px";
+        b.textContent = t.label;
+        b.onclick = () => {
+          themeMode = t.id;
+          applyTheme();
+        };
+        themeRail.appendChild(b);
+      });
+    }
+
+    function renderBrightRow() {
+      brightRow.innerHTML = "";
+      BRIGHT_STEPS.forEach(pct => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "pill" + (pct === brightPct ? " accent" : "");
+        b.style.fontSize = "13.5px";
+        b.style.padding = "7px 11px";
+        b.textContent = pct + "%";
+        b.onclick = () => {
+          brightPct = pct;
+          applyBrightness();
+        };
+        brightRow.appendChild(b);
+      });
     }
 
     // --- DETECTOR INTELIGENTE DE TIPO DE PREGUNTA ---
@@ -399,12 +1065,14 @@
       let cleanText = rawText.trim();
       let forced = formatMode;
 
-      const prefixMatch = cleanText.match(/^(vf|v\/f|alt|combo|caso|des|desarrollo)\s*[:\-]?\s+([\s\S]+)$/i);
+      const prefixMatch = cleanText.match(/^(vf|v\/f|alt|combo|def|definici[oó]n|comp|comparar|dif|sim|vs|caso|des|desarrollo)\s*[:\-]?\s+([\s\S]+)$/i);
       if (prefixMatch) {
         const p = prefixMatch[1].toLowerCase();
         cleanText = prefixMatch[2].trim();
         if (p === "vf" || p === "v/f") forced = "vf";
         else if (p === "alt" || p === "combo") forced = "alt";
+        else if (p === "def" || p.startsWith("definici")) forced = "def";
+        else if (["comp", "comparar", "dif", "sim", "vs"].includes(p)) forced = "comp";
         else if (p === "caso") forced = "caso";
         else if (p === "des" || p === "desarrollo") forced = "desarrollo";
       }
@@ -424,19 +1092,21 @@
         return { type: forced, text: cleanText };
       }
 
-      if (hasNumberedStmts && hasLetterOptions) {
-        return { type: "combo", text: cleanText };
-      }
-      if (hasLetterOptions) {
-        return { type: "alt", text: cleanText };
-      }
+      if (hasNumberedStmts && hasLetterOptions) return { type: "combo", text: cleanText };
+      if (hasLetterOptions) return { type: "alt", text: cleanText };
       if (/\b(verdadero o falso|v o f|v\/f|verdadero\/falso|es verdadero|es falso|justifique las falsas|justifica)\b/i.test(lower)) {
         return { type: "vf", text: cleanText };
+      }
+      if (/\b(compar[ae]|comparativa|comparaci[oó]n|diferencias?|similitud(es)?|semejanzas?|en qu[eé] se parecen|en qu[eé] se distinguen|distinci[oó]n entre|versus|vs\.?)\b/i.test(lower)) {
+        return { type: "comp", text: cleanText };
+      }
+      if (/\b(qu[eé] es|qu[eé] son|define|defina|definici[oó]n|concepto de|en qu[eé] consiste|significado de)\b/i.test(lower)) {
+        return { type: "def", text: cleanText };
       }
       if (/\b(caso|suponga|supón|conflicto|paciente|empresa|trabajador|contrato|demanda|qué corresponde hacer|cómo resolver|qué acción|qué delito)\b/i.test(lower)) {
         return { type: "caso", text: cleanText };
       }
-      if (/\b(desarrolle|explique|explica|compare|compara|diferencias? entre|fundamente|analice|analiza|ventajas y desventajas)\b/i.test(lower)) {
+      if (/\b(desarrolle|explique|explica|fundamente|analice|analiza|ventajas y desventajas)\b/i.test(lower)) {
         return { type: "desarrollo", text: cleanText };
       }
       return { type: "general", text: cleanText };
@@ -466,7 +1136,7 @@
             "1) Evalúa internamente CADA enunciado numerado (1, 2, 3, 4 o I, II, III, IV) como Verdadero o Falso según las fuentes.",
             "2) Arma el conjunto exacto que cumple lo pedido y crúzalo con las alternativas dadas (verifica especialmente 'Ninguna de las anteriores' o 'Todas').",
             "3) Primera línea OBLIGATORIA: RESPUESTA: [Letra] ([combinación exacta])",
-            "4) Debajo, una línea corta por cada enunciado: '1) V - motivo breve' o '2) F - por qué es falso'."
+            "4) Debajo, una línea corta por cada enunciado usando exactamente el formato: '1) V - motivo breve' o '2) F - por qué es falso'."
           );
           break;
         case "alt":
@@ -485,7 +1155,24 @@
             "- Si es FALSO, justifica de forma exacta y corta cuál es el dato correcto (si es VERDADERO, 1 frase breve de respaldo).",
             "Si vienen varias afirmaciones numeradas:",
             "- Primera línea OBLIGATORIA: RESPUESTA: [ej. 1-V, 2-F, 3-F]",
-            "- Debajo, lista cada una justificando obligatoriamente las FALSAS."
+            "- Debajo, usa '1) V - ...' y '2) F - ...' justificando obligatoriamente las FALSAS."
+          );
+          break;
+        case "def":
+          base.push(
+            "FORMATO DEFINICIÓN:",
+            "1) Primera línea OBLIGATORIA: DEFINICIÓN: [concepto exacto y preciso en 1 frase clara]",
+            "2) Elementos clave: 2 a 3 puntos cortos con los requisitos, características o rasgos esenciales.",
+            "3) Dato/Ejemplo: 1 línea breve para fijarlo o diferenciarlo (solo si aporta o consta en las fuentes)."
+          );
+          break;
+        case "comp":
+          base.push(
+            "FORMATO COMPARATIVA / SIMILITUDES / DIFERENCIAS:",
+            "1) Primera línea OBLIGATORIA: CLAVE: [resumen de la diferencia o relación central en 1 frase]",
+            "2) Similitudes: 2 puntos breves en qué coinciden (si el usuario pidió EXCLUSIVAMENTE diferencias, puedes omitir esta sección).",
+            "3) Diferencias: 3 a 4 puntos cortos ordenados por criterio, usando el formato '- Criterio: A ... / B ...' (si el usuario pidió EXCLUSIVAMENTE similitudes, enfócate en ellas).",
+            "No uses tablas; usa líneas cortas fáciles de leer en un reloj."
           );
           break;
         case "caso":
@@ -501,7 +1188,7 @@
           base.push(
             "FORMATO PREGUNTA DE DESARROLLO:",
             "1) Primera línea OBLIGATORIA: IDEA CLAVE: [tesis o definición central en 1 frase]",
-            "2) Debajo, 3 a 4 puntos breves numerados con los argumentos, etapas o diferencias clave listos para estructurar una respuesta completa.",
+            "2) Debajo, 3 a 4 puntos breves numerados con los argumentos, etapas o fundamentos listos para estructurar una respuesta completa.",
             "3) Cierre: 1 frase de conclusión."
           );
           break;
@@ -515,21 +1202,62 @@
       return base.join("\n");
     }
 
-    function renderReplyInto(container, replyText) {
-      container.innerHTML = "";
-      const lines = replyText.split("\n").map(l => l.trimEnd());
+    // --- RENDER SEMÁNTICO DE RESPUESTA ---
+    function extractVerdictPreview(replyText) {
+      if (!replyText) return "...";
+      const first = replyText.split("\n").map(l => l.trim()).find(Boolean) || "";
+      return first.length > 48 ? first.slice(0, 47) + "…" : first;
+    }
+
+    function appendFormattedLine(parent, rawLine) {
+      const p = document.createElement("div");
+      p.className = "ans-line";
+      const line = rawLine.trim();
+
+      // Etiquetas "1) V - ..." o "2) F - ..." o "I) V - ..."
+      const vfMatch = line.match(/^((?:[1-9]|I{1,3}V?)\s*[.)\-:]?\s*)(V|F)(?=\s|[-–—:.]|$)\s*[-–—:.]?\s*(.*)$/);
+      if (vfMatch) {
+        const badge = document.createElement("span");
+        badge.className = vfMatch[2] === "V" ? "badge-v" : "badge-f";
+        badge.textContent = (vfMatch[1].trim() + " " + vfMatch[2]).trim();
+        p.appendChild(badge);
+        if (vfMatch[3]) p.appendChild(document.createTextNode(vfMatch[3]));
+        parent.appendChild(p);
+        return;
+      }
+
+      // Subtítulos semánticos: Similitudes:, Diferencias:, Conflicto:, etc.
+      const secMatch = line.match(/^(Similitudes|Diferencias|Elementos clave|Dato\/Ejemplo|Ejemplo|Conflicto|Fundamento|Aplicaci[oó]n|Cierre|Descartes?)\s*:\s*(.*)$/i);
+      if (secMatch) {
+        const lbl = document.createElement("span");
+        const low = secMatch[1].toLowerCase();
+        lbl.className = "sec-lbl" + (low.startsWith("sim") ? " sim" : low.startsWith("dif") ? " dif" : "");
+        lbl.textContent = secMatch[1] + ":";
+        p.appendChild(lbl);
+        if (secMatch[2]) p.appendChild(document.createTextNode(" " + secMatch[2]));
+        parent.appendChild(p);
+        return;
+      }
+
+      p.textContent = line;
+      parent.appendChild(p);
+    }
+
+    function renderStructuredReply(container, replyText) {
+      const lines = (replyText || "").split("\n").map(l => l.trimEnd());
       const firstIdx = lines.findIndex(l => l.trim().length > 0);
       if (firstIdx === -1) {
         const a = document.createElement("div");
-        a.className = "a";
+        a.className = "answer-body";
         a.textContent = "(Sin respuesta)";
         container.appendChild(a);
         return;
       }
 
       const firstLine = lines[firstIdx].trim();
-      const isVerdict = /^(RESPUESTA:|SOLUCI[OÓ]N:|IDEA CLAVE:|VERDADERO\b|FALSO\b|CONFIRMADO\b|CORRECCI[OÓ]N:|NO APARECE EN TUS FUENTES)/i.test(firstLine);
+      const isVerdict = /^(RESPUESTA:|SOLUCI[OÓ]N:|IDEA CLAVE:|DEFINICI[OÓ]N:|CLAVE:|COMPARATIVA:|VERDADERO\b|FALSO\b|CONFIRMADO\b|CORRECCI[OÓ]N:|NO APARECE EN TUS FUENTES)/i.test(firstLine);
 
+      let restLines = lines.slice(firstIdx);
       if (isVerdict) {
         const vEl = document.createElement("div");
         vEl.className = "verdict";
@@ -537,23 +1265,222 @@
         else if (/^NO APARECE EN TUS FUENTES/i.test(firstLine)) vEl.classList.add("warn");
         vEl.textContent = firstLine;
         container.appendChild(vEl);
+        restLines = lines.slice(firstIdx + 1);
+      }
 
-        const rest = lines.slice(firstIdx + 1).join("\n").trim();
-        if (rest) {
-          const aEl = document.createElement("div");
-          aEl.className = "a";
-          aEl.textContent = rest;
-          container.appendChild(aEl);
-        }
-      } else {
-        const aEl = document.createElement("div");
-        aEl.className = "a";
-        aEl.textContent = replyText;
-        container.appendChild(aEl);
+      const nonEmptyRest = restLines.filter(l => l.trim().length > 0);
+      if (nonEmptyRest.length) {
+        const body = document.createElement("div");
+        body.className = "answer-body";
+        nonEmptyRest.forEach(l => appendFormattedLine(body, l));
+        container.appendChild(body);
       }
     }
 
-    // --- API ---
+    // --- CARRUSEL DE TARJETAS ---
+    function renderIndexDrawer() {
+      if (!indexOpen || cards.length === 0) {
+        indexDrawer.classList.add("hidden");
+        return;
+      }
+      indexDrawer.classList.remove("hidden");
+      indexDrawer.innerHTML = "";
+      cards.forEach((c, idx) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "index-item" + (idx === currentCardIdx ? " active" : "");
+        const title = `${idx + 1}. ${c.question.length > 46 ? c.question.slice(0, 45) + "…" : c.question}`;
+        item.appendChild(document.createTextNode(title));
+
+        const sub = document.createElement("span");
+        sub.className = "index-sub";
+        const activeView = c.views[c.activeTab] || c.views.original;
+        sub.textContent = activeView?.loading ? "Pensando..." : extractVerdictPreview(activeView?.text || activeView?.error || "");
+        item.appendChild(sub);
+
+        item.onclick = () => {
+          indexOpen = false;
+          goToCard(idx, idx > currentCardIdx ? "left" : "right");
+        };
+        indexDrawer.appendChild(item);
+      });
+    }
+
+    function renderDeck(animDir = null) {
+      if (cards.length === 0 || currentCardIdx < 0) {
+        emptyHint.classList.remove("hidden");
+        pagerBar.classList.add("hidden");
+        indexDrawer.classList.add("hidden");
+        activeCardEl.classList.add("hidden");
+        return;
+      }
+
+      emptyHint.classList.add("hidden");
+      pagerBar.classList.remove("hidden");
+      activeCardEl.classList.remove("hidden");
+
+      const card = cards[currentCardIdx];
+      prevCardBtn.disabled = currentCardIdx <= 0;
+      nextCardBtn.disabled = currentCardIdx >= cards.length - 1;
+      counterBtn.textContent = `${currentCardIdx + 1} / ${cards.length} ${indexOpen ? "▴" : "▾"}`;
+      renderIndexDrawer();
+
+      activeCardEl.classList.remove("anim-left", "anim-right");
+      if (animDir === "left" || animDir === "right") {
+        void activeCardEl.offsetWidth;
+        activeCardEl.classList.add(animDir === "left" ? "anim-left" : "anim-right");
+      }
+
+      activeCardEl.innerHTML = "";
+
+      // Cabecera de etiqueta
+      const top = document.createElement("div");
+      top.className = "card-top";
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = `${TYPE_BADGES[card.qType] || "💬"} · ${card.modelMode === "fast" ? "⚡" : "🧠"}`;
+      top.appendChild(tag);
+      activeCardEl.appendChild(top);
+
+      // Pestañas dentro de la tarjeta (Original / Corto / Auditoría)
+      const hasExtraTabs = !!(card.views.short || card.views.audit);
+      if (hasExtraTabs) {
+        const tabs = document.createElement("div");
+        tabs.className = "view-tabs";
+        const defs = [
+          { key: "original", label: "Original" },
+          ...(card.views.short ? [{ key: "short", label: "✂ Corto" }] : []),
+          ...(card.views.audit ? [{ key: "audit", label: "🧠 Pro" }] : [])
+        ];
+        defs.forEach(d => {
+          const tb = document.createElement("button");
+          tb.type = "button";
+          tb.className = "tab-btn" + (card.activeTab === d.key ? " active" : "");
+          tb.textContent = d.label;
+          tb.onclick = () => {
+            card.activeTab = d.key;
+            renderDeck();
+          };
+          tabs.appendChild(tb);
+        });
+        activeCardEl.appendChild(tabs);
+      }
+
+      // Pregunta
+      const qEl = document.createElement("div");
+      qEl.className = "q";
+      qEl.textContent = card.question;
+      activeCardEl.appendChild(qEl);
+
+      // Contenido de la vista activa
+      const view = card.views[card.activeTab] || card.views.original;
+      if (view.loading) {
+        const pw = document.createElement("div");
+        pw.className = "pulse-wrap";
+        const bar = document.createElement("div");
+        bar.className = "pulse-bar";
+        const pt = document.createElement("div");
+        pt.className = "pulse-txt";
+        pt.textContent = view.loadingText || "Buscando...";
+        pw.appendChild(bar);
+        pw.appendChild(pt);
+        activeCardEl.appendChild(pw);
+      } else if (view.error) {
+        const errEl = document.createElement("div");
+        errEl.className = "answer-body err";
+        errEl.textContent = "Error: " + view.error;
+        activeCardEl.appendChild(errEl);
+      } else {
+        renderStructuredReply(activeCardEl, view.text);
+        if (view.cited && view.cited.length) {
+          const srcEl = document.createElement("div");
+          srcEl.className = "src";
+          srcEl.textContent = "Fuentes: " + view.cited.join(", ");
+          activeCardEl.appendChild(srcEl);
+        }
+      }
+
+      // Acciones rápidas de la tarjeta (1 toque)
+      if (!card.views.original.loading && !card.views.original.error) {
+        const actionRail = document.createElement("div");
+        actionRail.className = "h-rail";
+        actionRail.style.justifyContent = "center";
+        actionRail.style.marginTop = "10px";
+
+        const auditBtn = document.createElement("button");
+        auditBtn.type = "button";
+        auditBtn.className = "mini-btn rail-item";
+        auditBtn.disabled = isLoading;
+        auditBtn.textContent = card.views.audit
+          ? "🧠 Ver Auditoría"
+          : (card.modelMode === "fast" ? "🧠 Auditar Pro" : "🔍 Doble chequeo");
+        auditBtn.onclick = () => {
+          if (card.views.audit && !card.views.audit.error) {
+            card.activeTab = "audit";
+            renderDeck();
+          } else {
+            runAuditOnCard(card);
+          }
+        };
+
+        const shortBtn = document.createElement("button");
+        shortBtn.type = "button";
+        shortBtn.className = "mini-btn rail-item";
+        shortBtn.disabled = isLoading;
+        shortBtn.textContent = card.views.short ? "✂ Ver Corto" : "✂ Más corto";
+        shortBtn.onclick = () => {
+          if (card.views.short && !card.views.short.error) {
+            card.activeTab = "short";
+            renderDeck();
+          } else {
+            runShortenOnCard(card);
+          }
+        };
+
+        actionRail.appendChild(auditBtn);
+        actionRail.appendChild(shortBtn);
+        activeCardEl.appendChild(actionRail);
+      }
+    }
+
+    function goToCard(idx, animDir) {
+      if (idx < 0 || idx >= cards.length) return;
+      currentCardIdx = idx;
+      renderDeck(animDir);
+    }
+
+    // Deslizamiento horizontal táctil en la tarjeta (respetando borde izquierdo de Wear OS)
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let swipeAllowed = false;
+
+    activeCardEl.addEventListener("touchstart", (e) => {
+      if (cards.length < 2 || e.touches.length !== 1) { swipeAllowed = false; return; }
+      if (e.target.closest(".h-rail")) { swipeAllowed = false; return; }
+      const t = e.touches[0];
+      // Ignora los primeros 26px del borde izquierdo para no chocar con el gesto "Atrás" de Wear OS
+      if (t.clientX < 26) { swipeAllowed = false; return; }
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      swipeAllowed = true;
+    }, { passive: true });
+
+    activeCardEl.addEventListener("touchend", (e) => {
+      if (!swipeAllowed || !e.changedTouches.length) return;
+      swipeAllowed = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStartX;
+      const dy = t.clientY - touchStartY;
+      if (Math.abs(dx) > 52 && Math.abs(dx) > Math.abs(dy) * 1.35) {
+        if (dx < 0 && currentCardIdx < cards.length - 1) {
+          goToCard(currentCardIdx + 1, "left");
+        } else if (dx > 0 && currentCardIdx > 0) {
+          goToCard(currentCardIdx - 1, "right");
+        }
+      }
+    }, { passive: true });
+
+    // --- API GEMINI + FILE SEARCH ---
     async function apiJson(url, options = {}) {
       const res = await fetch(url, options);
       const raw = await res.text();
@@ -702,19 +1629,13 @@
         span.textContent = prefix + (doc.displayName || doc.name.split("/").pop());
         const del = document.createElement("button");
         del.className = "del-btn";
+        del.type = "button";
         del.textContent = "Borrar";
         del.onclick = () => deleteDoc(doc.name);
         row.appendChild(span);
         row.appendChild(del);
         docList.appendChild(row);
       });
-    }
-
-    function updateView() {
-      const hasKey = !!getKey();
-      setupView.classList.toggle("hidden", hasKey);
-      chatView.classList.toggle("hidden", !hasKey);
-      if (hasKey) loadSources();
     }
 
     async function callGemini({ modelId, thinkLvl, sysText, contents, useRag }) {
@@ -755,78 +1676,6 @@
       return { reply, cited };
     }
 
-    async function auditWithPro(originalQuestion, previousReply, qType, btn) {
-      if (isLoading) return;
-      isLoading = true;
-      btn.disabled = true;
-      sendBtn.disabled = true;
-      sendBtn.textContent = "Auditando...";
-
-      const activeCount = activeDocs.filter(d => !d.state || d.state === "STATE_ACTIVE").length;
-      const useRag = useSources && !!activeStoreName && activeCount > 0;
-
-      const entry = document.createElement("div");
-      entry.className = "entry";
-      const tagWrap = document.createElement("div");
-      tagWrap.className = "tag-wrap";
-      const tag = document.createElement("span");
-      tag.className = "tag";
-      tag.textContent = "🧠 Auditoría Pro";
-      tagWrap.appendChild(tag);
-
-      const bodyWrap = document.createElement("div");
-      const loadingEl = document.createElement("div");
-      loadingEl.className = "a";
-      loadingEl.textContent = "Verificando trampas y fuentes...";
-      bodyWrap.appendChild(loadingEl);
-
-      entry.appendChild(tagWrap);
-      entry.appendChild(bodyWrap);
-      chatEl.appendChild(entry);
-      entry.scrollIntoView({ behavior: "smooth", block: "start" });
-
-      const auditSys = [
-        "Eres un auditor riguroso en español. Revisa si la respuesta previa tiene errores, trampas de redacción (EXCEPTO, INCORRECTA, siempre/nunca, 'ninguna de las anteriores') o contradicciones.",
-        useRag
-          ? "Básate EXCLUSIVAMENTE en las fuentes de File Search. Si no consta en las fuentes, inicia con 'NO APARECE EN TUS FUENTES'."
-          : "Evalúa con máximo rigor lógico y conceptual.",
-        "Primera línea OBLIGATORIA: 'CONFIRMADO: [veredicto exacto]' si está correcta, o 'CORRECCIÓN: [veredicto corregido]' si había error.",
-        "Debajo explica brevemente en 2 a 4 puntos cortos qué verificaste o corregiste. Sin asteriscos ni tablas."
-      ].join("\n");
-
-      const auditPrompt = `PREGUNTA ORIGINAL (${TYPE_BADGES[qType] || qType}):\n${originalQuestion}\n\nRESPUESTA PREVIA A AUDITAR:\n${previousReply}`;
-
-      try {
-        const { reply, cited } = await callGemini({
-          modelId: "gemini-4-hydrogen",
-          thinkLvl: "medium",
-          sysText: auditSys,
-          contents: [{ role: "user", parts: [{ text: auditPrompt }] }],
-          useRag
-        });
-
-        renderReplyInto(bodyWrap, reply);
-        if (cited.length) {
-          const srcEl = document.createElement("div");
-          srcEl.className = "src";
-          srcEl.textContent = "Fuentes: " + cited.join(", ");
-          entry.appendChild(srcEl);
-        }
-        entry.scrollIntoView({ behavior: "smooth", block: "start" });
-      } catch (err) {
-        bodyWrap.innerHTML = "";
-        const errEl = document.createElement("div");
-        errEl.className = "a err";
-        errEl.textContent = "Error al auditar: " + err.message;
-        bodyWrap.appendChild(errEl);
-        btn.disabled = false;
-      } finally {
-        isLoading = false;
-        sendBtn.disabled = false;
-        sendBtn.textContent = "Enviar";
-      }
-    }
-
     async function sendPrompt() {
       const rawText = promptInput.value.trim();
       const apiKey = getKey();
@@ -838,47 +1687,43 @@
       sendBtn.disabled = true;
       sendBtn.textContent = "Pensando...";
       promptInput.value = "";
+      formatDrawer.classList.add("hidden");
+      displayDrawer.classList.add("hidden");
+      indexOpen = false;
 
-      const hint = chatEl.querySelector(".hint");
-      if (hint) hint.remove();
+      const loadingMsg =
+        qType === "combo" ? "Evaluando enunciados..." :
+        qType === "comp"  ? "Comparando conceptos..." :
+        qType === "def"   ? "Buscando definición..." : "Buscando...";
 
-      const entry = document.createElement("div");
-      entry.className = "entry";
+      const newCard = {
+        id: Date.now(),
+        question: text,
+        qType,
+        modelMode: mode,
+        activeTab: "original",
+        views: {
+          original: { text: "", cited: [], loading: true, loadingText: loadingMsg, error: null },
+          short: null,
+          audit: null
+        }
+      };
 
-      const tagWrap = document.createElement("div");
-      tagWrap.className = "tag-wrap";
-      const tag = document.createElement("span");
-      tag.className = "tag";
-      tag.textContent = `${TYPE_BADGES[qType] || "💬"} · ${mode === "fast" ? "⚡" : "🧠"}`;
-      tagWrap.appendChild(tag);
-
-      const qEl = document.createElement("div");
-      qEl.className = "q";
-      qEl.textContent = text;
-
-      const bodyWrap = document.createElement("div");
-      const loadingEl = document.createElement("div");
-      loadingEl.className = "a";
-      loadingEl.textContent = qType === "combo" ? "Evaluando enunciados..." : "Buscando...";
-      bodyWrap.appendChild(loadingEl);
-
-      entry.appendChild(tagWrap);
-      entry.appendChild(qEl);
-      entry.appendChild(bodyWrap);
-      chatEl.appendChild(entry);
-      entry.scrollIntoView({ behavior: "smooth", block: "start" });
+      cards.push(newCard);
+      currentCardIdx = cards.length - 1;
+      renderDeck("left");
+      deckSection.scrollIntoView({ behavior: "smooth", block: "start" });
 
       chatHistory.push({ role: "user", parts: [{ text }] });
       if (chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
 
-      const isComplex = ["combo", "alt", "vf", "caso"].includes(qType);
+      const isComplex = ["combo", "alt", "vf", "caso", "comp"].includes(qType);
       const modelId = mode === "fast" ? "gemini-3.5-flash-lite" : "gemini-4-hydrogen";
       const thinkLvl = mode === "fast"
         ? (isComplex ? "low" : "minimal")
         : (isComplex ? "medium" : "low");
 
-      const activeCount = activeDocs.filter(d => !d.state || d.state === "STATE_ACTIVE").length;
-      const useRag = useSources && !!activeStoreName && activeCount > 0;
+      const useRag = useSources && !!activeStoreName && getActiveDocCount() > 0;
       const sysText = buildSystemPrompt(qType, useRag);
 
       try {
@@ -891,37 +1736,146 @@
         });
 
         chatHistory.push({ role: "model", parts: [{ text: reply }] });
-        renderReplyInto(bodyWrap, reply);
-
-        if (cited.length) {
-          const srcEl = document.createElement("div");
-          srcEl.className = "src";
-          srcEl.textContent = "Fuentes: " + cited.join(", ");
-          entry.appendChild(srcEl);
-        }
-
-        const actions = document.createElement("div");
-        actions.className = "entry-actions";
-        const auditBtn = document.createElement("button");
-        auditBtn.className = "mini-btn";
-        auditBtn.textContent = mode === "fast" ? "🧠 Auditar con Pro" : "🔍 Doble chequeo";
-        auditBtn.onclick = () => auditWithPro(text, reply, qType, auditBtn);
-        actions.appendChild(auditBtn);
-        entry.appendChild(actions);
-
-        entry.scrollIntoView({ behavior: "smooth", block: "start" });
+        newCard.views.original = { text: reply, cited, loading: false, error: null };
+        buzz(28);
       } catch (err) {
         chatHistory.pop();
-        bodyWrap.innerHTML = "";
-        const errEl = document.createElement("div");
-        errEl.className = "a err";
-        errEl.textContent = "Error: " + err.message;
-        bodyWrap.appendChild(errEl);
+        newCard.views.original = { text: "", cited: [], loading: false, error: err.message };
       } finally {
         isLoading = false;
         sendBtn.disabled = false;
         sendBtn.textContent = "Enviar";
+        renderDeck();
+        deckSection.scrollIntoView({ behavior: "smooth", block: "start" });
       }
+    }
+
+    async function runAuditOnCard(card) {
+      if (isLoading) return;
+      isLoading = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Auditando...";
+
+      card.views.audit = { text: "", cited: [], loading: true, loadingText: "Auditando con Pro...", error: null };
+      card.activeTab = "audit";
+      renderDeck();
+
+      const useRag = useSources && !!activeStoreName && getActiveDocCount() > 0;
+      const auditSys = [
+        "Eres un auditor riguroso en español. Revisa si la respuesta previa tiene errores, trampas de redacción (EXCEPTO, INCORRECTA, siempre/nunca, 'ninguna de las anteriores') o contradicciones.",
+        useRag
+          ? "Básate EXCLUSIVAMENTE en las fuentes de File Search. Si no consta en las fuentes, inicia con 'NO APARECE EN TUS FUENTES'."
+          : "Evalúa con máximo rigor lógico y conceptual.",
+        "Primera línea OBLIGATORIA: 'CONFIRMADO: [veredicto exacto]' si está correcta, o 'CORRECCIÓN: [veredicto corregido]' si había error.",
+        "Debajo explica brevemente en 2 a 4 puntos cortos qué verificaste o corregiste. Sin asteriscos ni tablas."
+      ].join("\n");
+
+      const prompt = `PREGUNTA ORIGINAL (${TYPE_BADGES[card.qType] || card.qType}):\n${card.question}\n\nRESPUESTA PREVIA A AUDITAR:\n${card.views.original.text}`;
+
+      try {
+        const { reply, cited } = await callGemini({
+          modelId: "gemini-4-hydrogen",
+          thinkLvl: "medium",
+          sysText: auditSys,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          useRag
+        });
+        card.views.audit = { text: reply, cited, loading: false, error: null };
+        buzz(35);
+      } catch (err) {
+        card.views.audit = { text: "", cited: [], loading: false, error: err.message };
+      } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Enviar";
+        renderDeck();
+        deckSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
+    async function runShortenOnCard(card) {
+      if (isLoading) return;
+      isLoading = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Resumiendo...";
+
+      card.views.short = { text: "", cited: card.views.original.cited || [], loading: true, loadingText: "Comprimiendo para reloj...", error: null };
+      card.activeTab = "short";
+      renderDeck();
+
+      const shortSys = [
+        "Eres un editor experto en textos ultra breves para un reloj inteligente.",
+        "Conserva EXACTAMENTE la primera línea de veredicto (RESPUESTA:, SOLUCIÓN:, DEFINICIÓN:, CLAVE:, VERDADERO, FALSO, etc.).",
+        "Debajo resume la explicación en MÁXIMO 3 líneas telegráficas cortas sin perder datos clave, fechas, números ni el motivo de los falsos.",
+        "No agregues información nueva. Sin asteriscos ni tablas."
+      ].join("\n");
+
+      const prompt = `PREGUNTA:\n${card.question}\n\nRESPUESTA A COMPRIMIR:\n${card.views.original.text}`;
+
+      try {
+        const { reply } = await callGemini({
+          modelId: "gemini-3.5-flash-lite",
+          thinkLvl: "minimal",
+          sysText: shortSys,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          useRag: false
+        });
+        card.views.short = { text: reply, cited: card.views.original.cited || [], loading: false, error: null };
+        buzz(20);
+      } catch (err) {
+        card.views.short = { text: "", cited: [], loading: false, error: err.message };
+      } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Enviar";
+        renderDeck();
+        deckSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
+    // --- BOTÓN FLOTANTE DE SALTO RÁPIDO ---
+    let fabAction = "down";
+    function updateFab() {
+      if (chatView.classList.contains("hidden") || cards.length === 0) {
+        fabBtn.classList.remove("show");
+        return;
+      }
+      const compRect = composerSec.getBoundingClientRect();
+      const deckRect = deckSection.getBoundingClientRect();
+      const vh = window.innerHeight;
+
+      if (compRect.top > vh - 30) {
+        fabAction = "down";
+        fabBtn.textContent = "↓ Preguntar";
+        fabBtn.classList.add("show");
+      } else if (deckRect.bottom < 40) {
+        fabAction = "up";
+        fabBtn.textContent = "↑ Respuesta";
+        fabBtn.classList.add("show");
+      } else {
+        fabBtn.classList.remove("show");
+      }
+    }
+
+    window.addEventListener("scroll", updateFab, { passive: true });
+    fabBtn.onclick = () => {
+      if (fabAction === "down") {
+        composerSec.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else {
+        deckSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+
+    // --- EVENTOS UI ---
+    function updateView() {
+      const hasKey = !!getKey();
+      setupView.classList.toggle("hidden", hasKey);
+      chatView.classList.toggle("hidden", !hasKey);
+      if (hasKey) {
+        loadSources();
+        renderDeck();
+      }
+      updateFab();
     }
 
     document.getElementById("saveKeyBtn").onclick = () => {
@@ -932,11 +1886,21 @@
       updateView();
     };
 
+    topStatusBtn.onclick = () => {
+      composerSec.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    prevCardBtn.onclick = () => goToCard(currentCardIdx - 1, "right");
+    nextCardBtn.onclick = () => goToCard(currentCardIdx + 1, "left");
+    counterBtn.onclick = () => {
+      indexOpen = !indexOpen;
+      renderDeck();
+    };
+
     sendBtn.onclick = sendPrompt;
 
     sourcesBtn.onclick = () => {
-      const count = activeDocs.filter(d => !d.state || d.state === "STATE_ACTIVE").length;
-      if (count === 0) {
+      if (getActiveDocCount() === 0) {
         alert("Aún no tienes fuentes cargadas. Abre '⚙ Opciones y Fuentes' desde tu PC o celular para subir archivos o pegar texto.");
         return;
       }
@@ -944,10 +1908,46 @@
       updateSourcesBtn();
     };
 
+    modeBtn.onclick = () => {
+      mode = mode === "fast" ? "smart" : "fast";
+      applyMode();
+    };
+
     formatBtn.onclick = () => {
-      const idx = FORMATS.findIndex(f => f.id === formatMode);
-      formatMode = FORMATS[(idx + 1) % FORMATS.length].id;
-      applyFormat();
+      const willOpen = formatDrawer.classList.contains("hidden");
+      displayDrawer.classList.add("hidden");
+      formatDrawer.classList.toggle("hidden", !willOpen);
+    };
+
+    displayBtn.onclick = () => {
+      const willOpen = displayDrawer.classList.contains("hidden");
+      formatDrawer.classList.add("hidden");
+      displayDrawer.classList.toggle("hidden", !willOpen);
+    };
+
+    clearBtn.onclick = () => {
+      if (cards.length > 0 && !confirm("¿Limpiar las respuestas de esta sesión?")) return;
+      chatHistory = [];
+      cards = [];
+      currentCardIdx = -1;
+      indexOpen = false;
+      renderDeck();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      updateFab();
+    };
+
+    document.getElementById("fontDown").onclick = () => { fontSize -= 2; applyFont(); };
+    document.getElementById("fontUp").onclick = () => { fontSize += 2; applyFont(); };
+
+    wakeBtn.onclick = () => {
+      wakeOn = !wakeOn;
+      syncWakeLock();
+    };
+
+    vibBtn.onclick = () => {
+      vibrateOn = !vibrateOn;
+      applyVibrate();
+      if (vibrateOn) buzz(22);
     };
 
     uploadFileBtn.onclick = async () => {
@@ -1010,20 +2010,6 @@
 
     document.getElementById("refreshDocsBtn").onclick = loadSources;
 
-    document.getElementById("clearBtn").onclick = () => {
-      chatHistory = [];
-      chatEl.innerHTML = '<div class="hint">Chat limpio. Toca abajo para escribir</div>';
-      window.scrollTo(0, 0);
-    };
-
-    modeBtn.onclick = () => {
-      mode = mode === "fast" ? "smart" : "fast";
-      applyMode();
-    };
-
-    document.getElementById("fontDown").onclick = () => { fontSize -= 2; applyFont(); };
-    document.getElementById("fontUp").onclick = () => { fontSize += 2; applyFont(); };
-
     document.getElementById("syncBtn").onclick = () => {
       const k = getKey();
       if (!k) return;
@@ -1038,11 +2024,16 @@
       }
     };
 
+    // Inicialización
     applyFont();
+    applyTheme();
+    applyBrightness();
+    applyVibrate();
     applyMode();
     applyFormat();
     updateSourcesBtn();
+    syncWakeLock();
     updateView();
   </script>
 </body>
-</html>
+  </html>
