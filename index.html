@@ -29,6 +29,41 @@
       text-align: center;
       word-wrap: break-word;
     }
+    .tag-wrap { text-align: center; }
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #9aa0a6;
+      background: #17181b;
+      border: 1px solid #2b2d33;
+      border-radius: 999px;
+      padding: 2px 9px;
+      margin-bottom: 8px;
+    }
+    .verdict {
+      background: #0f3d2e;
+      border: 1px solid #34a853;
+      color: #d7fbe8;
+      border-radius: 14px;
+      padding: 9px 12px;
+      margin-bottom: 10px;
+      font-size: calc(var(--fs) - 1px);
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.25;
+      word-wrap: break-word;
+    }
+    .verdict.false {
+      background: #4a1515;
+      border-color: #ea4335;
+      color: #ffd6d2;
+    }
+    .verdict.warn {
+      background: #42300b;
+      border-color: #fbbc04;
+      color: #fef0c7;
+    }
     .a {
       font-size: var(--fs);
       font-weight: 500;
@@ -43,6 +78,23 @@
       color: #81c995;
       line-height: 1.3;
     }
+    .entry-actions {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .mini-btn {
+      background: #1c1f26;
+      border: 1px solid #333a47;
+      color: #c6dafc;
+      padding: 7px 12px;
+      font-size: 13px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+    .mini-btn:disabled { opacity: 0.45; }
     .err { color: #ff8a80; }
     .hint {
       font-size: 18px;
@@ -99,6 +151,11 @@
       color: #b7f7d8;
       border: 1px solid #34a853;
     }
+    .pill.accent {
+      background: #1a2d4d;
+      color: #c2dbff;
+      border: 1px solid #4285f4;
+    }
     details {
       margin-top: 22px;
       color: #ccc;
@@ -148,6 +205,12 @@
       margin: 8px 0;
       text-align: center;
     }
+    .small-note {
+      font-size: 12px;
+      color: #9aa0a6;
+      margin: 4px 0 6px;
+      line-height: 1.35;
+    }
     .hidden { display: none; }
   </style>
 </head>
@@ -163,7 +226,7 @@
   <!-- Pantalla principal -->
   <div id="chatView" class="hidden">
     <div id="chat">
-      <div class="hint">Toca abajo para escribir tu pregunta</div>
+      <div class="hint">Toca abajo para escribir tu pregunta.<br>Detecta solas: Alt, 1-2-3, V/F, Casos y Desarrollo.</div>
     </div>
 
     <textarea
@@ -183,7 +246,11 @@
     </div>
 
     <div class="row">
+      <button id="formatBtn" class="pill accent">🎯 Auto</button>
       <button id="clearBtn" class="pill">Limpiar</button>
+    </div>
+
+    <div class="row">
       <button id="fontDown" class="pill">A-</button>
       <button id="fontUp" class="pill">A+</button>
     </div>
@@ -192,9 +259,25 @@
       <summary>⚙ Opciones y Fuentes</summary>
 
       <div class="panel">
+        <h3>⚡ Atajos de formato</h3>
+        <div class="small-note">
+          En <strong>🎯 Auto</strong> detecta solo el tipo de pregunta, o antepone:<br>
+          <strong>alt</strong> (alternativas / 1-2-3-4) · <strong>vf</strong> (verdadero/falso)<br>
+          <strong>caso</strong> (resolución de caso) · <strong>des</strong> (desarrollo)
+        </div>
+      </div>
+
+      <div class="panel">
         <h3>📚 Subir archivo (PC / Celular)</h3>
-        <input id="fileInput" type="file" accept=".md,.txt,.pdf,.doc,.docx,.ppt,.pptx,.csv" style="width:100%;color:#ccc;margin:6px 0;">
-        <button id="uploadFileBtn" class="big-btn" style="padding:12px;font-size:16px;margin:8px 0 0;">Subir archivo</button>
+        <div class="small-note">Recomendado: .md, .txt, .pdf o .docx limpios (máx. 100 MB). Audios (.m4a/.mp3) se transcriben primero en AI Studio.</div>
+        <input
+          id="fileInput"
+          type="file"
+          multiple
+          accept=".md,.txt,.pdf,.doc,.docx,.ppt,.pptx,.xlsx,.odt,.odp,.rtf,.csv,.json,.xml,.html"
+          style="width:100%;color:#ccc;margin:6px 0;"
+        >
+        <button id="uploadFileBtn" class="big-btn" style="padding:12px;font-size:16px;margin:8px 0 0;">Subir archivo(s)</button>
       </div>
 
       <div class="panel">
@@ -229,12 +312,32 @@
     const SIZE_STORAGE = "gemini_watch_font_size";
     const MODE_STORAGE = "gemini_watch_mode";
     const RAG_STORAGE = "gemini_watch_use_sources";
+    const FORMAT_STORAGE = "gemini_watch_format";
+
+    const FORMATS = [
+      { id: "auto",       label: "🎯 Auto" },
+      { id: "alt",        label: "🅰 Alt / 1-2-3" },
+      { id: "vf",         label: "✅ V / F" },
+      { id: "desarrollo", label: "📝 Desarrollo" },
+      { id: "caso",       label: "⚖ Caso" }
+    ];
+
+    const TYPE_BADGES = {
+      combo:      "🔢 Combinadas",
+      alt:        "🅰 Alternativas",
+      vf:         "✅ V / F",
+      desarrollo: "📝 Desarrollo",
+      caso:       "⚖ Caso",
+      general:    "💬 Directa"
+    };
 
     let chatHistory = [];
     let isLoading = false;
+    let isUploading = false;
     let fontSize = parseInt(localStorage.getItem(SIZE_STORAGE) || "22", 10);
     let mode = localStorage.getItem(MODE_STORAGE) || "fast";
     let useSources = localStorage.getItem(RAG_STORAGE) === "1";
+    let formatMode = localStorage.getItem(FORMAT_STORAGE) || "auto";
     let activeStoreName = null;
     let activeDocs = [];
 
@@ -244,9 +347,12 @@
     const promptInput = document.getElementById("promptInput");
     const sendBtn = document.getElementById("sendBtn");
     const modeBtn = document.getElementById("modeBtn");
+    const formatBtn = document.getElementById("formatBtn");
     const sourcesBtn = document.getElementById("sourcesBtn");
     const sourceStatus = document.getElementById("sourceStatus");
     const docList = document.getElementById("docList");
+    const uploadFileBtn = document.getElementById("uploadFileBtn");
+    const uploadTextBtn = document.getElementById("uploadTextBtn");
 
     if (location.hash.startsWith("#key=")) {
       const k = decodeURIComponent(location.hash.slice(5)).trim();
@@ -269,8 +375,15 @@
       localStorage.setItem(MODE_STORAGE, mode);
     }
 
+    function applyFormat() {
+      const f = FORMATS.find(x => x.id === formatMode) || FORMATS[0];
+      formatMode = f.id;
+      formatBtn.textContent = f.label;
+      localStorage.setItem(FORMAT_STORAGE, formatMode);
+    }
+
     function updateSourcesBtn() {
-      const count = activeDocs.length;
+      const count = activeDocs.filter(d => !d.state || d.state === "STATE_ACTIVE").length;
       const active = useSources && count > 0;
       sourcesBtn.classList.toggle("on", active);
       if (count === 0) {
@@ -281,6 +394,166 @@
       localStorage.setItem(RAG_STORAGE, useSources ? "1" : "0");
     }
 
+    // --- DETECTOR INTELIGENTE DE TIPO DE PREGUNTA ---
+    function analyzePrompt(rawText) {
+      let cleanText = rawText.trim();
+      let forced = formatMode;
+
+      const prefixMatch = cleanText.match(/^(vf|v\/f|alt|combo|caso|des|desarrollo)\s*[:\-]?\s+([\s\S]+)$/i);
+      if (prefixMatch) {
+        const p = prefixMatch[1].toLowerCase();
+        cleanText = prefixMatch[2].trim();
+        if (p === "vf" || p === "v/f") forced = "vf";
+        else if (p === "alt" || p === "combo") forced = "alt";
+        else if (p === "caso") forced = "caso";
+        else if (p === "des" || p === "desarrollo") forced = "desarrollo";
+      }
+
+      const lower = cleanText.toLowerCase();
+      const hasNumberedStmts =
+        (/(?:^|\n|\s)(?:1[.)\-:]|I[.)\-:])\s?/.test(cleanText) && /(?:^|\n|\s)(?:2[.)\-:]|II[.)\-:])\s?/.test(cleanText)) ||
+        /\b(?:i\s+y\s+ii|1\s+y\s+2|solo\s+i|solo\s+1|i,\s*ii|1,\s*2)\b/i.test(cleanText);
+      const hasLetterOptions =
+        (/(?:^|\n|\s)[aA][.)\](\-:]\s?/.test(cleanText) && /(?:^|\n|\s)[bB][.)\](\-:]\s?/.test(cleanText)) ||
+        /\b(?:ninguna de las anteriores|todas las anteriores|alternativa correcta|alternativa incorrecta)\b/i.test(lower);
+
+      if (forced === "alt") {
+        return { type: hasNumberedStmts ? "combo" : "alt", text: cleanText };
+      }
+      if (forced !== "auto") {
+        return { type: forced, text: cleanText };
+      }
+
+      if (hasNumberedStmts && hasLetterOptions) {
+        return { type: "combo", text: cleanText };
+      }
+      if (hasLetterOptions) {
+        return { type: "alt", text: cleanText };
+      }
+      if (/\b(verdadero o falso|v o f|v\/f|verdadero\/falso|es verdadero|es falso|justifique las falsas|justifica)\b/i.test(lower)) {
+        return { type: "vf", text: cleanText };
+      }
+      if (/\b(caso|suponga|supón|conflicto|paciente|empresa|trabajador|contrato|demanda|qué corresponde hacer|cómo resolver|qué acción|qué delito)\b/i.test(lower)) {
+        return { type: "caso", text: cleanText };
+      }
+      if (/\b(desarrolle|explique|explica|compare|compara|diferencias? entre|fundamente|analice|analiza|ventajas y desventajas)\b/i.test(lower)) {
+        return { type: "desarrollo", text: cleanText };
+      }
+      return { type: "general", text: cleanText };
+    }
+
+    function buildSystemPrompt(qType, useRag) {
+      const base = [
+        "Eres un experto analizador que responde en español, ultra claro, preciso y adaptado a la pantalla redonda de un reloj inteligente.",
+        "No uses asteriscos (**), almohadillas (#), ni tablas Markdown."
+      ];
+
+      if (useRag) {
+        base.push(
+          "REGLA ESTRICTA DE FUENTES: Usa ÚNICAMENTE la información de las fuentes adjuntas en File Search.",
+          "Si el dato necesario no aparece en las fuentes, inicia la primera línea con 'NO APARECE EN TUS FUENTES' y explica brevemente qué falta, sin inventar ni completar con conocimiento externo."
+        );
+      }
+
+      base.push(
+        "DETECTOR DE TRAMPAS: Antes de decidir, verifica siempre si la pregunta pide la CORRECTA o la INCORRECTA/EXCEPTO/NO corresponde, y cuida palabras absolutas como siempre, nunca, solo, exclusivamente o 'ninguna de las anteriores'."
+      );
+
+      switch (qType) {
+        case "combo":
+          base.push(
+            "FORMATO ENUNCIADOS COMBINADOS (1,2,3,4... + A,B,C,D):",
+            "1) Evalúa internamente CADA enunciado numerado (1, 2, 3, 4 o I, II, III, IV) como Verdadero o Falso según las fuentes.",
+            "2) Arma el conjunto exacto que cumple lo pedido y crúzalo con las alternativas dadas (verifica especialmente 'Ninguna de las anteriores' o 'Todas').",
+            "3) Primera línea OBLIGATORIA: RESPUESTA: [Letra] ([combinación exacta])",
+            "4) Debajo, una línea corta por cada enunciado: '1) V - motivo breve' o '2) F - por qué es falso'."
+          );
+          break;
+        case "alt":
+          base.push(
+            "FORMATO ALTERNATIVAS (A, B, C, D):",
+            "1) Primera línea OBLIGATORIA: RESPUESTA: [Letra] - [texto corto de la opción]",
+            "2) Debajo, explica en 1-2 frases por qué esa es la correcta.",
+            "3) En 1 línea por opción, indica brevemente por qué se descartan las demás (solo si se entregaron opciones)."
+          );
+          break;
+        case "vf":
+          base.push(
+            "FORMATO VERDADERO O FALSO:",
+            "Si es una sola afirmación:",
+            "- Primera línea OBLIGATORIA: VERDADERO o FALSO",
+            "- Si es FALSO, justifica de forma exacta y corta cuál es el dato correcto (si es VERDADERO, 1 frase breve de respaldo).",
+            "Si vienen varias afirmaciones numeradas:",
+            "- Primera línea OBLIGATORIA: RESPUESTA: [ej. 1-V, 2-F, 3-F]",
+            "- Debajo, lista cada una justificando obligatoriamente las FALSAS."
+          );
+          break;
+        case "caso":
+          base.push(
+            "FORMATO RESOLUCIÓN DE CASO / CONFLICTO:",
+            "1) Primera línea OBLIGATORIA: SOLUCIÓN: [decisión o conclusión directa en 1 frase]",
+            "2) Conflicto: qué problema central existe (1 línea).",
+            "3) Fundamento: regla, norma o concepto aplicable (1-2 líneas).",
+            "4) Aplicación: cómo se resuelve el caso paso a paso en puntos cortos."
+          );
+          break;
+        case "desarrollo":
+          base.push(
+            "FORMATO PREGUNTA DE DESARROLLO:",
+            "1) Primera línea OBLIGATORIA: IDEA CLAVE: [tesis o definición central en 1 frase]",
+            "2) Debajo, 3 a 4 puntos breves numerados con los argumentos, etapas o diferencias clave listos para estructurar una respuesta completa.",
+            "3) Cierre: 1 frase de conclusión."
+          );
+          break;
+        default:
+          base.push(
+            "Responde directo al grano en puntos cortos y claros.",
+            "Si hay una conclusión o dato puntual, colócalo en la primera línea iniciando con 'RESPUESTA: '."
+          );
+      }
+
+      return base.join("\n");
+    }
+
+    function renderReplyInto(container, replyText) {
+      container.innerHTML = "";
+      const lines = replyText.split("\n").map(l => l.trimEnd());
+      const firstIdx = lines.findIndex(l => l.trim().length > 0);
+      if (firstIdx === -1) {
+        const a = document.createElement("div");
+        a.className = "a";
+        a.textContent = "(Sin respuesta)";
+        container.appendChild(a);
+        return;
+      }
+
+      const firstLine = lines[firstIdx].trim();
+      const isVerdict = /^(RESPUESTA:|SOLUCI[OÓ]N:|IDEA CLAVE:|VERDADERO\b|FALSO\b|CONFIRMADO\b|CORRECCI[OÓ]N:|NO APARECE EN TUS FUENTES)/i.test(firstLine);
+
+      if (isVerdict) {
+        const vEl = document.createElement("div");
+        vEl.className = "verdict";
+        if (/^(FALSO\b|CORRECCI[OÓ]N:)/i.test(firstLine)) vEl.classList.add("false");
+        else if (/^NO APARECE EN TUS FUENTES/i.test(firstLine)) vEl.classList.add("warn");
+        vEl.textContent = firstLine;
+        container.appendChild(vEl);
+
+        const rest = lines.slice(firstIdx + 1).join("\n").trim();
+        if (rest) {
+          const aEl = document.createElement("div");
+          aEl.className = "a";
+          aEl.textContent = rest;
+          container.appendChild(aEl);
+        }
+      } else {
+        const aEl = document.createElement("div");
+        aEl.className = "a";
+        aEl.textContent = replyText;
+        container.appendChild(aEl);
+      }
+    }
+
+    // --- API ---
     async function apiJson(url, options = {}) {
       const res = await fetch(url, options);
       const raw = await res.text();
@@ -294,13 +567,22 @@
       const ext = (fileName.split(".").pop() || "").toLowerCase();
       const map = {
         md: "text/markdown",
+        markdown: "text/markdown",
         txt: "text/plain",
         csv: "text/csv",
+        json: "application/json",
+        xml: "application/xml",
+        html: "text/html",
+        htm: "text/html",
         pdf: "application/pdf",
+        rtf: "application/rtf",
         doc: "application/msword",
         docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         ppt: "application/vnd.ms-powerpoint",
-        pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        odt: "application/vnd.oasis.opendocument.text",
+        odp: "application/vnd.oasis.opendocument.presentation"
       };
       return map[ext] || fallback || "text/plain";
     }
@@ -310,7 +592,7 @@
       if (!apiKey) return;
       sourceStatus.textContent = "Sincronizando fuentes...";
       try {
-        const storesData = await apiJson(`${API_BASE}/fileSearchStores?key=${encodeURIComponent(apiKey)}`);
+        const storesData = await apiJson(`${API_BASE}/fileSearchStores?pageSize=20&key=${encodeURIComponent(apiKey)}`);
         const stores = storesData.fileSearchStores || [];
         const found = stores.find(s => s.displayName === STORE_DISPLAY) || stores[0] || null;
         activeStoreName = found ? found.name : null;
@@ -323,7 +605,447 @@
           return;
         }
 
-        const docsData = await apiJson(`${API_BASE}/${activeStoreName}/documents?key=${encodeURIComponent(apiKey)}`);
+        let allDocs = [];
+        let pageToken = "";
+        do {
+          const qs = pageToken
+            ? `pageSize=20&pageToken=${encodeURIComponent(pageToken)}&key=${encodeURIComponent(apiKey)}`
+            : `pageSize=20&key=${encodeURIComponent(apiKey)}`;
+          const docsData = await apiJson(`${API_BASE}/${activeStoreName}/documents?${qs}`);
+          if (docsData.documents) allDocs = allDocs.concat(docsData.documents);
+          pageToken = docsData.nextPageToken || "";
+        } while (pageToken);
+
+        activeDocs = allDocs;
+        renderDocs();
+        sourceStatus.textContent = activeDocs.length
+          ? `${activeDocs.length} fuente(s) lista(s)`
+          : "Carpeta vacía. Sube tu primera fuente.";
+        updateSourcesBtn();
+      } catch (err) {
+        sourceStatus.textContent = "Error al cargar fuentes: " + err.message;
+      }
+    }
+
+    async function ensureStore() {
+      if (activeStoreName) return activeStoreName;
+      const apiKey = getKey();
+      const created = await apiJson(`${API_BASE}/fileSearchStores?key=${encodeURIComponent(apiKey)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: STORE_DISPLAY })
+      });
+      activeStoreName = created.name;
+      return activeStoreName;
+    }
+
+    async function uploadBlobToStore(blob, fileName, mimeType) {
+      if (blob.size > 100 * 1024 * 1024) {
+        throw new Error(`"${fileName}" supera el límite de 100 MB.`);
+      }
+      const apiKey = getKey();
+      const storeName = await ensureStore();
+      const boundary = "watchgemini" + Date.now() + Math.random().toString(16).slice(2);
+      const metadata = JSON.stringify({ displayName: fileName, mimeType });
+
+      const bodyBlob = new Blob([
+        `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
+        `--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`,
+        blob,
+        `\r\n--${boundary}--`
+      ]);
+
+      sourceStatus.textContent = `Subiendo "${fileName}"...`;
+      let op = await apiJson(
+        `${UPLOAD_BASE}/${storeName}:uploadToFileSearchStore?uploadType=multipart&key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
+          body: bodyBlob
+        }
+      );
+
+      let tries = 0;
+      while (op && !op.done && op.name && tries < 60) {
+        sourceStatus.textContent = `Indexando "${fileName}"...`;
+        await new Promise(r => setTimeout(r, 1500));
+        const opPath = op.name.replace(/^\/+/, "");
+        op = await apiJson(`${API_BASE}/${opPath}?key=${encodeURIComponent(apiKey)}`);
+        tries++;
+      }
+      if (op && op.error) throw new Error(op.error.message || "Error al indexar");
+    }
+
+    async function deleteDoc(docName) {
+      if (!confirm("¿Borrar esta fuente?")) return;
+      const apiKey = getKey();
+      sourceStatus.textContent = "Borrando fuente...";
+      try {
+        await apiJson(`${API_BASE}/${docName}?force=true&key=${encodeURIComponent(apiKey)}`, {
+          method: "DELETE"
+        });
+        await loadSources();
+      } catch (err) {
+        sourceStatus.textContent = "Error al borrar: " + err.message;
+      }
+    }
+
+    function renderDocs() {
+      docList.innerHTML = "";
+      activeDocs.forEach(doc => {
+        const row = document.createElement("div");
+        row.className = "doc-item";
+        const span = document.createElement("span");
+        const prefix =
+          doc.state === "STATE_FAILED" ? "❌ " :
+          doc.state === "STATE_PENDING" ? "⏳ " : "";
+        span.textContent = prefix + (doc.displayName || doc.name.split("/").pop());
+        const del = document.createElement("button");
+        del.className = "del-btn";
+        del.textContent = "Borrar";
+        del.onclick = () => deleteDoc(doc.name);
+        row.appendChild(span);
+        row.appendChild(del);
+        docList.appendChild(row);
+      });
+    }
+
+    function updateView() {
+      const hasKey = !!getKey();
+      setupView.classList.toggle("hidden", hasKey);
+      chatView.classList.toggle("hidden", !hasKey);
+      if (hasKey) loadSources();
+    }
+
+    async function callGemini({ modelId, thinkLvl, sysText, contents, useRag }) {
+      const apiKey = getKey();
+      const payload = {
+        systemInstruction: { parts: [{ text: sysText }] },
+        contents,
+        generationConfig: { thinkingConfig: { thinkingLevel: thinkLvl } }
+      };
+      if (useRag) {
+        payload.tools = [{ fileSearch: { fileSearchStoreNames: [activeStoreName] } }];
+      }
+
+      const data = await apiJson(
+        `${API_BASE}/models/${modelId}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      const cand = data.candidates?.[0] || {};
+      const parts = cand.content?.parts || [];
+      const reply = parts
+        .filter(p => !p.thought && p.text)
+        .map(p => p.text)
+        .join("\n")
+        .replace(/\*\*/g, "")
+        .replace(/^#+\s*/gm, "")
+        .trim() || "(Sin respuesta)";
+
+      const chunks = cand.groundingMetadata?.groundingChunks || [];
+      const cited = [...new Set(
+        chunks.map(c => c.retrievedContext?.title || c.retrievedContext?.uri).filter(Boolean)
+      )];
+
+      return { reply, cited };
+    }
+
+    async function auditWithPro(originalQuestion, previousReply, qType, btn) {
+      if (isLoading) return;
+      isLoading = true;
+      btn.disabled = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Auditando...";
+
+      const activeCount = activeDocs.filter(d => !d.state || d.state === "STATE_ACTIVE").length;
+      const useRag = useSources && !!activeStoreName && activeCount > 0;
+
+      const entry = document.createElement("div");
+      entry.className = "entry";
+      const tagWrap = document.createElement("div");
+      tagWrap.className = "tag-wrap";
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = "🧠 Auditoría Pro";
+      tagWrap.appendChild(tag);
+
+      const bodyWrap = document.createElement("div");
+      const loadingEl = document.createElement("div");
+      loadingEl.className = "a";
+      loadingEl.textContent = "Verificando trampas y fuentes...";
+      bodyWrap.appendChild(loadingEl);
+
+      entry.appendChild(tagWrap);
+      entry.appendChild(bodyWrap);
+      chatEl.appendChild(entry);
+      entry.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      const auditSys = [
+        "Eres un auditor riguroso en español. Revisa si la respuesta previa tiene errores, trampas de redacción (EXCEPTO, INCORRECTA, siempre/nunca, 'ninguna de las anteriores') o contradicciones.",
+        useRag
+          ? "Básate EXCLUSIVAMENTE en las fuentes de File Search. Si no consta en las fuentes, inicia con 'NO APARECE EN TUS FUENTES'."
+          : "Evalúa con máximo rigor lógico y conceptual.",
+        "Primera línea OBLIGATORIA: 'CONFIRMADO: [veredicto exacto]' si está correcta, o 'CORRECCIÓN: [veredicto corregido]' si había error.",
+        "Debajo explica brevemente en 2 a 4 puntos cortos qué verificaste o corregiste. Sin asteriscos ni tablas."
+      ].join("\n");
+
+      const auditPrompt = `PREGUNTA ORIGINAL (${TYPE_BADGES[qType] || qType}):\n${originalQuestion}\n\nRESPUESTA PREVIA A AUDITAR:\n${previousReply}`;
+
+      try {
+        const { reply, cited } = await callGemini({
+          modelId: "gemini-4-hydrogen",
+          thinkLvl: "medium",
+          sysText: auditSys,
+          contents: [{ role: "user", parts: [{ text: auditPrompt }] }],
+          useRag
+        });
+
+        renderReplyInto(bodyWrap, reply);
+        if (cited.length) {
+          const srcEl = document.createElement("div");
+          srcEl.className = "src";
+          srcEl.textContent = "Fuentes: " + cited.join(", ");
+          entry.appendChild(srcEl);
+        }
+        entry.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (err) {
+        bodyWrap.innerHTML = "";
+        const errEl = document.createElement("div");
+        errEl.className = "a err";
+        errEl.textContent = "Error al auditar: " + err.message;
+        bodyWrap.appendChild(errEl);
+        btn.disabled = false;
+      } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Enviar";
+      }
+    }
+
+    async function sendPrompt() {
+      const rawText = promptInput.value.trim();
+      const apiKey = getKey();
+      if (!rawText || !apiKey || isLoading) return;
+
+      const { type: qType, text } = analyzePrompt(rawText);
+
+      isLoading = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Pensando...";
+      promptInput.value = "";
+
+      const hint = chatEl.querySelector(".hint");
+      if (hint) hint.remove();
+
+      const entry = document.createElement("div");
+      entry.className = "entry";
+
+      const tagWrap = document.createElement("div");
+      tagWrap.className = "tag-wrap";
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = `${TYPE_BADGES[qType] || "💬"} · ${mode === "fast" ? "⚡" : "🧠"}`;
+      tagWrap.appendChild(tag);
+
+      const qEl = document.createElement("div");
+      qEl.className = "q";
+      qEl.textContent = text;
+
+      const bodyWrap = document.createElement("div");
+      const loadingEl = document.createElement("div");
+      loadingEl.className = "a";
+      loadingEl.textContent = qType === "combo" ? "Evaluando enunciados..." : "Buscando...";
+      bodyWrap.appendChild(loadingEl);
+
+      entry.appendChild(tagWrap);
+      entry.appendChild(qEl);
+      entry.appendChild(bodyWrap);
+      chatEl.appendChild(entry);
+      entry.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      chatHistory.push({ role: "user", parts: [{ text }] });
+      if (chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
+
+      const isComplex = ["combo", "alt", "vf", "caso"].includes(qType);
+      const modelId = mode === "fast" ? "gemini-3.5-flash-lite" : "gemini-4-hydrogen";
+      const thinkLvl = mode === "fast"
+        ? (isComplex ? "low" : "minimal")
+        : (isComplex ? "medium" : "low");
+
+      const activeCount = activeDocs.filter(d => !d.state || d.state === "STATE_ACTIVE").length;
+      const useRag = useSources && !!activeStoreName && activeCount > 0;
+      const sysText = buildSystemPrompt(qType, useRag);
+
+      try {
+        const { reply, cited } = await callGemini({
+          modelId,
+          thinkLvl,
+          sysText,
+          contents: chatHistory,
+          useRag
+        });
+
+        chatHistory.push({ role: "model", parts: [{ text: reply }] });
+        renderReplyInto(bodyWrap, reply);
+
+        if (cited.length) {
+          const srcEl = document.createElement("div");
+          srcEl.className = "src";
+          srcEl.textContent = "Fuentes: " + cited.join(", ");
+          entry.appendChild(srcEl);
+        }
+
+        const actions = document.createElement("div");
+        actions.className = "entry-actions";
+        const auditBtn = document.createElement("button");
+        auditBtn.className = "mini-btn";
+        auditBtn.textContent = mode === "fast" ? "🧠 Auditar con Pro" : "🔍 Doble chequeo";
+        auditBtn.onclick = () => auditWithPro(text, reply, qType, auditBtn);
+        actions.appendChild(auditBtn);
+        entry.appendChild(actions);
+
+        entry.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (err) {
+        chatHistory.pop();
+        bodyWrap.innerHTML = "";
+        const errEl = document.createElement("div");
+        errEl.className = "a err";
+        errEl.textContent = "Error: " + err.message;
+        bodyWrap.appendChild(errEl);
+      } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Enviar";
+      }
+    }
+
+    document.getElementById("saveKeyBtn").onclick = () => {
+      const k = document.getElementById("keyInput").value.trim();
+      if (!k) return;
+      localStorage.setItem(KEY_STORAGE, k);
+      document.getElementById("keyInput").value = "";
+      updateView();
+    };
+
+    sendBtn.onclick = sendPrompt;
+
+    sourcesBtn.onclick = () => {
+      const count = activeDocs.filter(d => !d.state || d.state === "STATE_ACTIVE").length;
+      if (count === 0) {
+        alert("Aún no tienes fuentes cargadas. Abre '⚙ Opciones y Fuentes' desde tu PC o celular para subir archivos o pegar texto.");
+        return;
+      }
+      useSources = !useSources;
+      updateSourcesBtn();
+    };
+
+    formatBtn.onclick = () => {
+      const idx = FORMATS.findIndex(f => f.id === formatMode);
+      formatMode = FORMATS[(idx + 1) % FORMATS.length].id;
+      applyFormat();
+    };
+
+    uploadFileBtn.onclick = async () => {
+      if (isUploading) return;
+      const files = Array.from(document.getElementById("fileInput").files || []);
+      if (!files.length) { sourceStatus.textContent = "Elige al menos un archivo primero."; return; }
+
+      isUploading = true;
+      uploadFileBtn.disabled = true;
+      uploadTextBtn.disabled = true;
+      try {
+        for (const file of files) {
+          const ext = (file.name.split(".").pop() || "").toLowerCase();
+          if (["m4a", "mp3", "wav", "ogg", "mp4", "mov", "webm"].includes(ext)) {
+            throw new Error(`"${file.name}" es audio/video. Transcríbelo en aistudio.google.com y pégalo abajo.`);
+          }
+          await uploadBlobToStore(file, file.name, getMimeType(file.name, file.type));
+        }
+        document.getElementById("fileInput").value = "";
+        useSources = true;
+        await loadSources();
+        sourceStatus.textContent = files.length === 1
+          ? `✅ "${files[0].name}" lista para consultar`
+          : `✅ ${files.length} archivos listos para consultar`;
+      } catch (err) {
+        sourceStatus.textContent = "Error al subir: " + err.message;
+      } finally {
+        isUploading = false;
+        uploadFileBtn.disabled = false;
+        uploadTextBtn.disabled = false;
+      }
+    };
+
+    uploadTextBtn.onclick = async () => {
+      if (isUploading) return;
+      const titleRaw = document.getElementById("noteTitle").value.trim() || ("nota-" + Date.now());
+      const body = document.getElementById("noteBody").value.trim();
+      if (!body) { sourceStatus.textContent = "Pega algún texto primero."; return; }
+      const fileName = /\.(md|txt)$/i.test(titleRaw) ? titleRaw : (titleRaw + ".md");
+
+      isUploading = true;
+      uploadFileBtn.disabled = true;
+      uploadTextBtn.disabled = true;
+      try {
+        const blob = new Blob([body], { type: "text/markdown;charset=utf-8" });
+        await uploadBlobToStore(blob, fileName, "text/markdown");
+        document.getElementById("noteTitle").value = "";
+        document.getElementById("noteBody").value = "";
+        useSources = true;
+        await loadSources();
+        sourceStatus.textContent = `✅ "${fileName}" lista para consultar`;
+      } catch (err) {
+        sourceStatus.textContent = "Error al guardar texto: " + err.message;
+      } finally {
+        isUploading = false;
+        uploadFileBtn.disabled = false;
+        uploadTextBtn.disabled = false;
+      }
+    };
+
+    document.getElementById("refreshDocsBtn").onclick = loadSources;
+
+    document.getElementById("clearBtn").onclick = () => {
+      chatHistory = [];
+      chatEl.innerHTML = '<div class="hint">Chat limpio. Toca abajo para escribir</div>';
+      window.scrollTo(0, 0);
+    };
+
+    modeBtn.onclick = () => {
+      mode = mode === "fast" ? "smart" : "fast";
+      applyMode();
+    };
+
+    document.getElementById("fontDown").onclick = () => { fontSize -= 2; applyFont(); };
+    document.getElementById("fontUp").onclick = () => { fontSize += 2; applyFont(); };
+
+    document.getElementById("syncBtn").onclick = () => {
+      const k = getKey();
+      if (!k) return;
+      location.hash = "key=" + encodeURIComponent(k);
+      alert("Listo. Guarda esta página en Marcadores de Samsung Internet en tu celular.");
+    };
+
+    document.getElementById("resetKeyBtn").onclick = () => {
+      if (confirm("¿Borrar la API Key de este dispositivo?")) {
+        localStorage.removeItem(KEY_STORAGE);
+        updateView();
+      }
+    };
+
+    applyFont();
+    applyMode();
+    applyFormat();
+    updateSourcesBtn();
+    updateView();
+  </script>
+</body>
+</html>?key=${encodeURIComponent(apiKey)}`);
         activeDocs = docsData.documents || [];
         renderDocs();
         sourceStatus.textContent = activeDocs.length
